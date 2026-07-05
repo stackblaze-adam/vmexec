@@ -39,11 +39,31 @@ from datetime import datetime, timedelta
 
 SECRET_KEY = "super-secure-backup-manager-secret"
 ALGORITHM = "HS256"
+MFA_PENDING_COOKIE = "mfa_pending_token"
+
 
 def create_access_token(username: str):
     expire = datetime.utcnow() + timedelta(days=7)
     to_encode = {"sub": username, "exp": expire}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_mfa_pending_token(username: str) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=5)
+    to_encode = {"sub": username, "exp": expire, "typ": "mfa_pending"}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_mfa_pending_token(token: str):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("typ") != "mfa_pending":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
 
 def decode_access_token(token: str):
     try:

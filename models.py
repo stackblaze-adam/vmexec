@@ -82,6 +82,7 @@ class Config(Base):
     backup_timeout_mins = Column(Integer, default=15) # Default wait for idle/consolidation
     max_global_backups = Column(Integer, default=10)
     max_backups_per_host = Column(Integer, default=2)
+    max_schedules_per_hour = Column(Integer, default=2)  # Stagger inventory adds (max jobs starting same hour)
     datastore_min_free_pct = Column(Integer, default=15)
     datastore_headroom_gb = Column(Integer, default=10)
     datastore_est_multiplier = Column(Float, default=2.0)
@@ -145,6 +146,7 @@ class VM(Base):
     schedule_days = Column(String, default="0,1,2,3,4,5,6")  # APScheduler day_of_week: 0=Mon … 6=Sun
     last_backup = Column(DateTime, nullable=True)
     last_status = Column(String, default="Never")
+    last_secondary_copy_status = Column(String, default="none")  # none | ok | failed | skipped | copying
     progress = Column(Integer, default=0)
     current_action = Column(String, default="")
     power_state = Column(String, default="Unknown") # poweredOn, poweredOff, etc.
@@ -223,6 +225,7 @@ def init_db():
             ("schedule_days", "ALTER TABLE vms ADD COLUMN schedule_days VARCHAR DEFAULT '0,1,2,3,4,5,6'"),
             ("max_global_backups", "ALTER TABLE config ADD COLUMN max_global_backups INTEGER DEFAULT 10"),
             ("max_backups_per_host", "ALTER TABLE config ADD COLUMN max_backups_per_host INTEGER DEFAULT 2"),
+            ("max_schedules_per_hour", "ALTER TABLE config ADD COLUMN max_schedules_per_hour INTEGER DEFAULT 2"),
             ("datastore_min_free_pct", "ALTER TABLE config ADD COLUMN datastore_min_free_pct INTEGER DEFAULT 15"),
             ("datastore_headroom_gb", "ALTER TABLE config ADD COLUMN datastore_headroom_gb INTEGER DEFAULT 10"),
             ("datastore_est_multiplier", "ALTER TABLE config ADD COLUMN datastore_est_multiplier REAL DEFAULT 2.0"),
@@ -250,6 +253,7 @@ def init_db():
             ("secondary_s3_secret_key", "ALTER TABLE config ADD COLUMN secondary_s3_secret_key VARCHAR DEFAULT ''"),
             ("secondary_s3_bucket", "ALTER TABLE config ADD COLUMN secondary_s3_bucket VARCHAR DEFAULT ''"),
             ("secondary_s3_region", "ALTER TABLE config ADD COLUMN secondary_s3_region VARCHAR DEFAULT 'us-east-1'"),
+            ("last_secondary_copy_status", "ALTER TABLE vms ADD COLUMN last_secondary_copy_status VARCHAR DEFAULT 'none'"),
         ]
         
         from logger_util import log_info, log_warn

@@ -5,13 +5,14 @@ from urllib.parse import quote
 from fastapi import FastAPI, Depends, Request, Form, status, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from models import SessionLocal, init_db, Config, VM, BackupLog, User, ESXiHost, RestoreJob
 import esxi_handler
 import worker
 from config_env import TEMPLATES_DIR, DATA_DIR
 import auth
+import backup_engine
 from fastapi.security import APIKeyCookie
 import pyotp
 import threading
@@ -32,9 +33,18 @@ v1_app.include_router(v1_router)
 app.mount("/api/v1", v1_app)
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates.env.filters["is_infra_vm"] = backup_engine.matches_infra_vm_pattern
 _static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(_static_dir, exist_ok=True)
+SPA_DIST = os.path.join(_static_dir, "dist")
+SPA_INDEX = os.path.join(SPA_DIST, "index.html")
 app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+if os.path.isdir(os.path.join(SPA_DIST, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(SPA_DIST, "assets")), name="spa_assets")
+
+
+def spa_enabled():
+    return os.path.isfile(SPA_INDEX)
 cookie_sec = APIKeyCookie(name="session_token", auto_error=False)
 
 # Dependency
@@ -98,34 +108,67 @@ def require_auth(request: Request):
     return username
 
 @app.get("/login")
-def login_page(request: Request, error: str = None):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+def login_page(request: Request, error: str = None, cancel: bool = False):
+    if spa_enabled():
+        return FileResponse(SPA_INDEX)
+    if cancel:
+        response = RedirectResponse(url="/login", status_code=303)
+        response.delete_cookie(auth.MFA_PENDING_COOKIE)
+        return response
+    mfa_username = auth.decode_mfa_pending_token(request.cookies.get(auth.MFA_PENDING_COOKIE))
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "error": error,
+        "mfa_step": bool(mfa_username),
+        "username": mfa_username or "",
+    })
 
 @app.post("/login")
-def login_post(request: Request, username: str = Form(...), password: str = Form(...), mfa_code: str = Form(None), db: Session = Depends(get_db)):
+def login_post(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
     if not user or not auth.verify_password(password, user.hashed_password):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Incorrect username or password"})
-        
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Incorrect username or password", "mfa_step": False})
+
     if user.is_mfa_enabled:
-        if not mfa_code or not auth.verify_totp(user.mfa_secret, mfa_code):
-            return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid MFA Code"})
-            
-    # Login success
-    token = auth.create_access_token(username)
-    
-    # If MFA not enabled, force setup
-    if not user.is_mfa_enabled:
-        secret = auth.generate_mfa_secret()
-        uri = auth.get_totp_uri(secret, username)
-        qr_b64 = auth.generate_qr_code(uri)
-        
-        response = templates.TemplateResponse("mfa_setup.html", {"request": request, "qr_code": qr_b64, "secret": secret})
-        response.set_cookie(key="session_token", value=token, httponly=True)
+        pending = auth.create_mfa_pending_token(username)
+        response = templates.TemplateResponse("login.html", {
+            "request": request,
+            "mfa_step": True,
+            "username": username,
+        })
+        response.set_cookie(key=auth.MFA_PENDING_COOKIE, value=pending, httponly=True, max_age=300, samesite="lax")
         return response
 
+    # Login success — first-time MFA setup required
+    token = auth.create_access_token(username)
+    secret = auth.generate_mfa_secret()
+    uri = auth.get_totp_uri(secret, username)
+    qr_b64 = auth.generate_qr_code(uri)
+
+    response = templates.TemplateResponse("mfa_setup.html", {"request": request, "qr_code": qr_b64, "secret": secret})
+    response.set_cookie(key="session_token", value=token, httponly=True)
+    return response
+
+
+@app.post("/login/mfa")
+def login_mfa_post(request: Request, mfa_code: str = Form(...), db: Session = Depends(get_db)):
+    username = auth.decode_mfa_pending_token(request.cookies.get(auth.MFA_PENDING_COOKIE))
+    if not username:
+        return RedirectResponse(url="/login?error=Your+sign-in+session+expired.+Try+again.", status_code=303)
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not user.is_mfa_enabled or not auth.verify_totp(user.mfa_secret, mfa_code):
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "mfa_step": True,
+            "username": username,
+            "error": "Invalid MFA code. Try again.",
+        })
+
+    token = auth.create_access_token(username)
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(key="session_token", value=token, httponly=True)
+    response.delete_cookie(auth.MFA_PENDING_COOKIE)
     return response
 
 @app.post("/mfa_verify")
@@ -273,6 +316,8 @@ def admin_update_role(
 
 @app.get("/")
 def read_root(request: Request, db: Session = Depends(get_db)):
+    if spa_enabled():
+        return FileResponse(SPA_INDEX)
     try:
         username = require_auth(request)
     except HTTPException as e:
@@ -286,12 +331,19 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     esxi_hosts = db.query(ESXiHost).all()
     selected_vm_count = db.query(VM).filter(VM.is_selected == True).count()
     setup_wizard_suggested = len(esxi_hosts) == 0 or selected_vm_count == 0
+    selected_vms = (
+        db.query(VM)
+        .filter(VM.is_selected == True)
+        .order_by(VM.schedule_hour, VM.schedule_minute, VM.vm_name)
+        .all()
+    )
             
     from models import NOTIFY_EVENTS
     return templates.TemplateResponse("index.html", {
         "request": request,
         "config": config,
         "vms": vms,
+        "selected_vms": selected_vms,
         "logs": logs,
         "users": users,
         "current_user": user,
@@ -324,6 +376,7 @@ def save_config(
     backup_timeout_mins: int = Form(15),
     max_global_backups: int = Form(10),
     max_backups_per_host: int = Form(2),
+    max_schedules_per_hour: int = Form(2),
     datastore_min_free_pct: int = Form(15),
     datastore_headroom_gb: int = Form(10),
     datastore_est_multiplier: float = Form(2.0),
@@ -388,6 +441,7 @@ def save_config(
     config.backup_timeout_mins = backup_timeout_mins
     config.max_global_backups = max(1, min(32, max_global_backups))
     config.max_backups_per_host = max(1, min(8, max_backups_per_host))
+    config.max_schedules_per_hour = max(1, min(12, max_schedules_per_hour))
     config.datastore_min_free_pct = max(5, min(50, datastore_min_free_pct))
     config.datastore_headroom_gb = max(0, min(500, datastore_headroom_gb))
     config.datastore_est_multiplier = max(1.0, min(3.0, float(datastore_est_multiplier)))
@@ -434,8 +488,8 @@ def save_config(
         pass
 
     if request.headers.get("X-Requested-With") == "fetch":
-        return JSONResponse({"ok": True, "message": "Configuration saved."})
-    return RedirectResponse(url="/?saved=settings", status_code=303)
+        return JSONResponse({"ok": True, "message": "Settings saved."})
+    return RedirectResponse(url="/?tab=settings&saved=settings", status_code=303)
 
 @app.post("/add_esxi_host")
 def add_esxi_host(
@@ -824,7 +878,7 @@ def profile_update(
         # notify_subscriptions arrives as a comma-separated string built by JS from checked checkboxes
         user.notify_subscriptions = notify_subscriptions.strip()
         db.commit()
-    return RedirectResponse(url="/?tab=settings&profile_saved=1", status_code=303)
+    return RedirectResponse(url="/?tab=account&profile_saved=1", status_code=303)
 
 
 @app.post("/stop_job")
@@ -848,13 +902,18 @@ def get_job_progress(request: Request, db: Session = Depends(get_db)):
         out[vm.id] = {
             "progress": vm.progress or 0,
             "current_action": vm.current_action or "",
-            "speed_mbps": round(getattr(vm, 'speed_mbps', 0) or 0, 1)
+            "speed_mbps": round(getattr(vm, 'speed_mbps', 0) or 0, 1),
+            "secondary_copy_status": getattr(vm, "last_secondary_copy_status", None) or "none",
+            "last_status": vm.last_status or "Never",
+            "last_backup_ts": vm.last_backup.timestamp() if vm.last_backup else 0,
         }
     return out
 
 
 @app.get("/overview")
 def get_overview(request: Request, db: Session = Depends(get_db)):
+    if spa_enabled():
+        return FileResponse(SPA_INDEX)
     try:
         require_auth(request)
     except HTTPException:
@@ -931,6 +990,20 @@ def get_syslogs(request: Request, s_lines: int = 100, s_search: str = "", w_line
         "service_log": tail_file("service.log", s_lines, s_search),
         "worker_log": tail_file("worker.log", w_lines, w_search)
     }
+
+
+@app.get("/{full_path:path}")
+def spa_catchall(full_path: str):
+    """Vue SPA history-mode fallback (after API and legacy routes)."""
+    if not spa_enabled():
+        raise HTTPException(status_code=404, detail="Not found")
+    if full_path.startswith("api/") or full_path == "api":
+        raise HTTPException(status_code=404, detail="Not found")
+    asset = os.path.join(SPA_DIST, full_path)
+    if full_path and os.path.isfile(asset):
+        return FileResponse(asset)
+    return FileResponse(SPA_INDEX)
+
 
 if __name__ == "__main__":
     lock_file = "app.lock"

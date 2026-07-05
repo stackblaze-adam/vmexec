@@ -11,13 +11,19 @@ RUN git clone --depth 1 https://gitlab.com/nbdkit/nbdkit.git \
     && ./configure --disable-dependency-tracking \
     && make -j"$(nproc)"
 
+# ── Vue SPA ──────────────────────────────────────────────────────────────────
+FROM node:20-bookworm-slim AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ .
+RUN npm run build
+
 FROM python:3.11-slim
 
-# Metadata
 LABEL maintainer="THIS Cyber Security" \
       description="VMExec — VM Backup & Disaster Recovery"
 
-# Runtime: nbdkit + libnbd + VDDK plugin
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
@@ -32,14 +38,12 @@ COPY --from=nbdkit-vddk-build /src/nbdkit/plugins/vddk/.libs/nbdkit-vddk-plugin.
 
 WORKDIR /app
 
-# Install Python dependencies first (better layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
 COPY . .
+COPY --from=frontend-build /app/static/dist ./static/dist
 
-# Vendor dir for VDDK tarball (mounted at runtime on production)
 RUN mkdir -p data bin/ovftool static vendor/vddk /tmp/vmware-root \
     && chmod 1777 /tmp/vmware-root
 

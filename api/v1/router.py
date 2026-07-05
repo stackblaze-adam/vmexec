@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -9,11 +9,14 @@ from api.schemas import (
     LoginRequest, TokenResponse, ApiKeyCreateRequest, ApiKeyCreateResponse, ApiKeyInfo,
     StorageConfigUpdate, ConfigResponse, ConfigUpdate, TestResult,
     ESXiHostCreate, ESXiHostResponse, VmUpdate, VmResponse, SyncResult,
+    InventoryApplyRequest,
     UserResponse, UserCreateRequest, UserCreateResponse, UserRoleUpdate,
     PasswordResetResponse, ProfileUpdate, BackupLogEntry, SystemLogsResponse,
     RestoreCreateRequest, RestoreResponse, OverviewResponse,
+    SessionLoginRequest, SessionLoginResponse, SessionMfaRequest,
+    MfaSetupRequest, MfaSetupStartResponse, BootstrapResponse,
 )
-from models import User, ApiKey
+from models import User, ApiKey, ESXiHost, VM
 from services import backup_ops
 from services import user_ops
 
@@ -108,6 +111,87 @@ def revoke_api_key(
 @router.get("/auth/me", response_model=UserResponse)
 def get_me(user: User = Depends(get_api_user)):
     return UserResponse(**user_ops.user_to_dict(user))
+
+
+def _set_session_cookie(response: Response, username: str):
+    response.set_cookie(key="session_token", value=auth.create_access_token(username), httponly=True, samesite="lax")
+
+
+@router.post("/auth/session/login", response_model=SessionLoginResponse)
+def session_login(body: SessionLoginRequest, response: Response, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == body.username).first()
+    if not user or not auth.verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    if user.is_mfa_enabled:
+        pending = auth.create_mfa_pending_token(body.username)
+        response.set_cookie(key=auth.MFA_PENDING_COOKIE, value=pending, httponly=True, max_age=300, samesite="lax")
+        return SessionLoginResponse(status="mfa_required", username=body.username)
+
+    secret = auth.generate_mfa_secret()
+    uri = auth.get_totp_uri(secret, body.username)
+    qr_b64 = auth.generate_qr_code(uri)
+    _set_session_cookie(response, body.username)
+    return SessionLoginResponse(
+        status="mfa_setup_required",
+        username=body.username,
+        qr_code=qr_b64,
+        secret=secret,
+        message="Scan the QR code with your authenticator app, then verify.",
+    )
+
+
+@router.post("/auth/session/mfa", response_model=SessionLoginResponse)
+def session_mfa(body: SessionMfaRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    username = auth.decode_mfa_pending_token(request.cookies.get(auth.MFA_PENDING_COOKIE))
+    if not username:
+        raise HTTPException(status_code=401, detail="MFA session expired. Sign in again.")
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not user.is_mfa_enabled or not auth.verify_totp(user.mfa_secret, body.mfa_code):
+        raise HTTPException(status_code=401, detail="Invalid MFA code")
+
+    _set_session_cookie(response, username)
+    response.delete_cookie(auth.MFA_PENDING_COOKIE)
+    return SessionLoginResponse(status="ok", username=username)
+
+
+@router.get("/auth/session/mfa-setup", response_model=MfaSetupStartResponse)
+def session_mfa_setup_start(user: User = Depends(get_api_user)):
+    if user.is_mfa_enabled:
+        raise HTTPException(status_code=400, detail="MFA already enabled")
+    secret = auth.generate_mfa_secret()
+    uri = auth.get_totp_uri(secret, user.username)
+    return MfaSetupStartResponse(qr_code=auth.generate_qr_code(uri), secret=secret)
+
+
+@router.post("/auth/session/mfa-setup", response_model=SessionLoginResponse)
+def session_mfa_setup_complete(body: MfaSetupRequest, db: Session = Depends(get_db), user: User = Depends(get_api_user)):
+    if not auth.verify_totp(body.secret, body.mfa_code):
+        raise HTTPException(status_code=400, detail="Invalid MFA code")
+    user.mfa_secret = body.secret
+    user.is_mfa_enabled = True
+    db.commit()
+    return SessionLoginResponse(status="ok", username=user.username)
+
+
+@router.post("/auth/session/logout")
+def session_logout(response: Response):
+    response.delete_cookie("session_token")
+    response.delete_cookie(auth.MFA_PENDING_COOKIE)
+    return {"ok": True}
+
+
+@router.get("/bootstrap", response_model=BootstrapResponse)
+def bootstrap(db: Session = Depends(get_db), user: User = Depends(get_api_user)):
+    from models import NOTIFY_EVENTS
+    host_count = db.query(ESXiHost).count()
+    selected_count = db.query(VM).filter(VM.is_selected == True).count()
+    return BootstrapResponse(
+        user=UserResponse(**user_ops.user_to_dict(user)),
+        setup_wizard_suggested=host_count == 0 or selected_count == 0,
+        notify_events=[[k, v] for k, v in NOTIFY_EVENTS],
+    )
 
 
 # ─── Config ─────────────────────────────────────────────────────────────────
@@ -328,6 +412,18 @@ def patch_vm(
     return VmResponse(**backup_ops.vm_to_dict(vm))
 
 
+@router.post("/inventory/apply")
+def apply_inventory(
+    body: InventoryApplyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_api_role("admin", "operator")),
+):
+    if not body.updates and not body.restagger:
+        return {"ok": True, "staggered": False, "selected_count": 0}
+    updates = [u.model_dump() for u in body.updates]
+    return backup_ops.apply_inventory_selections(db, updates, restagger=body.restagger)
+
+
 @router.post("/vms/{vm_id}/run")
 def run_vm_backup(
     vm_id: int,
@@ -491,3 +587,44 @@ def jobs_progress(db: Session = Depends(get_db), user: User = Depends(get_api_us
 @router.get("/overview", response_model=OverviewResponse)
 def overview(db: Session = Depends(get_db), user: User = Depends(get_api_user)):
     return OverviewResponse(**backup_ops.get_overview(db))
+
+
+@router.post("/maintenance/snapshot-purge")
+def snapshot_purge(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_api_role("admin")),
+):
+    import threading
+    import esxi_handler
+    import worker as worker_mod
+    from models import SessionLocal
+    import time as time_mod
+
+    def run_global_cleanup():
+        bg_db = SessionLocal()
+        try:
+            vms_bg = bg_db.query(VM).all()
+            host_sis = {}
+            for vm in vms_bg:
+                if not vm.esxi_host:
+                    continue
+                h = vm.esxi_host
+                if h.id not in host_sis:
+                    si = esxi_handler.connect_esxi(h.host_ip, h.username, h.password)
+                    if si:
+                        host_sis[h.id] = si
+                si = host_sis.get(h.id)
+                if si:
+                    esxi_handler.remove_snapshot(si, vm.vm_name)
+            for si in host_sis.values():
+                esxi_handler.Disconnect(si)
+        finally:
+            bg_db.close()
+
+    threading.Thread(target=run_global_cleanup, daemon=True).start()
+    worker_mod.send_event_notification(
+        "snapshot_cleanup",
+        "[VMExec] Snapshot Purge Triggered",
+        f"A global snapshot consolidation was initiated by {user.username} at {time_mod.strftime('%Y-%m-%d %H:%M')}.",
+    )
+    return {"ok": True, "message": "Global snapshot purge started in background"}

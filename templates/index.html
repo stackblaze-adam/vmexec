@@ -390,8 +390,6 @@
         .job-schedule-inline input[type="number"] { -moz-appearance: textfield; }
         .job-schedule-inline input[type="number"]::-webkit-outer-spin-button,
         .job-schedule-inline input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .jobs-view-btn { padding: 0.375rem 0.75rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; border: 1px solid var(--border-color); color: var(--text-muted); background: var(--bg-card); }
-        .jobs-view-btn.active { border-color: var(--brand); color: var(--brand); background: rgba(59, 130, 246, 0.08); }
         .jobs-sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
         .jobs-sort-th:hover { color: var(--text-main); }
         .jobs-sort-th.active { color: var(--brand); }
@@ -510,9 +508,48 @@
         .settings-wizard-btn { width: 100%; padding: 0.5rem 0.75rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.375rem; border: 1px dashed var(--border-color); color: var(--text-muted); background: transparent; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
         .settings-wizard-btn:hover { color: var(--brand); border-color: var(--brand); background: rgba(59, 130, 246, 0.06); }
         .settings-content { flex: 1; min-width: 0; }
-        .settings-panel.hidden { display: none; }
+        .settings-panel.hidden, .account-panel.hidden { display: none; }
         .settings-panel-title { font-size: 1.375rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .settings-panel-desc { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+        .settings-panel-desc { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .settings-engine-section { border-top: 1px solid var(--border-color); padding: 0.75rem 0; }
+        .settings-engine-section:first-child { border-top: none; padding-top: 0; }
+        .settings-engine-heading { font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .settings-engine-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+        @media (min-width: 1024px) { .settings-engine-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        .settings-engine-grid-safety {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(5.25rem, 1fr));
+            gap: 0.75rem;
+            align-items: end;
+        }
+        @media (max-width: 1100px) {
+            .settings-engine-grid-safety { grid-template-columns: repeat(4, minmax(5.25rem, 1fr)); }
+        }
+        @media (max-width: 640px) {
+            .settings-engine-grid-safety { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        .settings-engine-grid .span-2 { grid-column: span 2; }
+        @media (min-width: 1024px) { .settings-engine-grid .span-4 { grid-column: span 4; } }
+        .settings-engine-grid input[type="number"],
+        .settings-engine-grid select,
+        .settings-engine-grid input[type="text"],
+        .settings-engine-grid-safety input[type="number"] { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+        .settings-toggle { display: flex; align-items: center; gap: 0.5rem; min-height: 2rem; }
+        .settings-toggle-track { position: relative; flex-shrink: 0; width: 2.25rem; height: 1.25rem; }
+        .settings-toggle-track input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .settings-toggle-track .track {
+            position: absolute; inset: 0; border-radius: 9999px;
+            background: var(--border-color); transition: background 0.15s;
+        }
+        .settings-toggle-track input:checked + .track { background: var(--brand); }
+        .settings-toggle-track .thumb {
+            position: absolute; top: 0.125rem; left: 0.125rem; width: 1rem; height: 1rem;
+            border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            transition: transform 0.15s;
+        }
+        .settings-toggle-track input:checked ~ .thumb { transform: translateX(1rem); }
+        .settings-toggle-track input:disabled + .track { opacity: 0.45; }
+        .settings-toggle-track input:disabled ~ .thumb { opacity: 0.85; }
         @media (max-width: 768px) {
             .settings-layout { flex-direction: column; }
             .settings-sidebar { width: 100%; position: static; }
@@ -527,6 +564,46 @@
         .modal-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(2px); }
         .modal-panel { position: relative; width: 100%; max-width: 28rem; padding: 1.5rem; border-radius: 0.75rem; animation: modalIn 0.15s ease-out; }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .inventory-drawer { position: fixed; inset: 0; z-index: 80; }
+        .inventory-drawer.hidden { display: none; }
+        .inventory-drawer-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(1px); }
+        .inventory-drawer-panel {
+            position: absolute; top: 0; right: 0; bottom: 0; width: min(100vw, 32rem);
+            background: var(--bg-card); border-left: 1px solid var(--border-color);
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
+            display: flex; flex-direction: column;
+            animation: drawerInRight 0.2s ease-out;
+        }
+        @keyframes drawerInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .inventory-drawer-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            padding: 1rem 1rem 0.75rem; border-bottom: 1px solid var(--border-color);
+            background: var(--bg-nav); flex-shrink: 0;
+        }
+        .inventory-drawer-close {
+            padding: 0.375rem; border-radius: 0.375rem; color: var(--text-muted);
+            border: 1px solid var(--border-color); background: transparent; cursor: pointer;
+        }
+        .inventory-drawer-close:hover { color: var(--text-main); background: var(--bg-card); }
+        .inventory-drawer-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .inventory-drawer-footer {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            padding: 0.875rem 1rem; border-top: 1px solid var(--border-color);
+            background: var(--bg-nav); flex-shrink: 0;
+        }
+        .inventory-drawer-footer-actions { display: flex; gap: 0.5rem; }
+        #backup-inventory-panel { border: none; border-radius: 0; height: 100%; display: flex; flex-direction: column; }
+        #backup-inventory-panel .inventory-scroll { flex: 1; min-height: 0; max-height: none; }
+        #restore-drawer-panel { border: none; border-radius: 0; height: 100%; display: flex; flex-direction: column; }
+        #restore-drawer-panel .inventory-scroll { flex: 1; min-height: 0; max-height: none; }
+        #restore-drawer-panel .restore-scroll-versions { max-height: 11rem; min-height: 0; }
+        .restore-vm-row, .restore-version-row { cursor: pointer; transition: background 0.15s; }
+        .restore-vm-row:hover, .restore-version-row:hover { background: var(--btn-sec-hover); }
+        .restore-vm-row.selected, .restore-version-row.selected { background: rgba(59, 130, 246, 0.12); }
+        .restore-vm-row.selected td:first-child .restore-row-dot,
+        .restore-version-row.selected td:first-child .restore-row-dot { background: var(--brand); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+        .restore-row-dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--border-color); }
 
         /* Minimal scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -585,7 +662,7 @@
                 message,
                 confirmText: opts.confirmText || 'Confirm',
                 cancelText: opts.cancelText || 'Cancel',
-                danger: opts.danger !== false,
+                danger: !!opts.danger,
             });
         }
 
@@ -599,6 +676,57 @@
             });
         }
 
+        function initSettingsConfigForm() {
+            const form = document.getElementById('settings-config-form');
+            if (!form || form.dataset.ajaxBound === '1') return;
+            form.dataset.ajaxBound = '1';
+            form.addEventListener('submit', async e => {
+                e.preventDefault();
+                const panelId = localStorage.getItem('settingsPanel') || 'storage';
+                const submitBtn = e.submitter;
+                const prevLabel = submitBtn?.textContent;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Saving…';
+                }
+                try {
+                    const res = await fetch('/save_config', {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: { 'X-Requested-With': 'fetch' },
+                    });
+                    let data = {};
+                    try { data = await res.json(); } catch (_) {}
+                    if (!res.ok) throw new Error(data.detail || data.message || 'Could not save settings.');
+                    showSettingsSaveToast(data.message || 'Settings saved.', false);
+                    const invPanel = document.getElementById('backup-inventory-panel');
+                    const excludeInfra = form.querySelector('[name="exclude_infra_vms"]')?.checked;
+                    if (invPanel) invPanel.dataset.excludeInfraVms = excludeInfra ? '1' : '0';
+                    if (typeof syncSettingsEngineUi === 'function') syncSettingsEngineUi();
+                    if (typeof syncSettingsCbtUi === 'function') syncSettingsCbtUi();
+                } catch (err) {
+                    showSettingsSaveToast(err.message || 'Could not save settings.', true);
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = prevLabel;
+                    }
+                }
+            });
+        }
+
+        function showSettingsSaveToast(message, isError) {
+            const toast = document.getElementById('settings-save-toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            toast.style.background = isError ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)';
+            toast.style.color = isError ? '#f87171' : '#4ade80';
+            toast.style.borderColor = isError ? 'rgba(239,68,68,0.35)' : 'rgba(34,197,94,0.35)';
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => toast.classList.add('hidden'), isError ? 8000 : 4000);
+        }
+
         function initConfirmForms() {
             document.querySelectorAll('form[data-confirm]').forEach(form => {
                 if (form.dataset.confirmBound === '1') return;
@@ -610,7 +738,10 @@
                     const title = form.getAttribute('data-confirm-title') || 'Confirm';
                     const confirmText = form.getAttribute('data-confirm-submit') || 'Confirm';
                     const ok = await showConfirm(msg, { title, confirmText, danger });
-                    if (ok) form.submit(); // native submit — bypasses this listener
+                    if (ok) {
+                        if (form.id === 'restoreForm') closeRestoreDrawer();
+                        form.submit(); // native submit — bypasses this listener
+                    }
                 });
             });
         }
@@ -649,23 +780,244 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        const LEGACY_TAB_MAP = {
+            'tab-inventory': 'tab-jobs',
+            'tab-users': 'tab-settings',
+            'tab-syslogs': 'tab-settings',
+        };
+
+        function resolveSettingsPanelFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const panel = params.get('panel');
+            if (panel && panel !== 'profile' && panel !== 'api') return panel;
+            const tab = params.get('tab');
+            if (tab === 'users') return 'users';
+            if (tab === 'syslogs') return 'syslogs';
+            return null;
+        }
+
+        function resolveAccountPanelFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const panel = params.get('panel');
+            if (panel === 'profile' || panel === 'api') return panel;
+            if (params.get('profile_saved')) return 'profile';
+            return null;
+        }
+
+        function defaultSettingsPanel() {
+            return document.body.dataset.admin === '1' ? 'storage' : 'syslogs';
+        }
+
         function getInitialTabId() {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab');
-            if (tabParam && document.getElementById('tab-' + tabParam)) {
-                return 'tab-' + tabParam;
+            const panelParam = params.get('panel');
+
+            if (panelParam === 'profile' || panelParam === 'api' || params.get('profile_saved')) {
+                return 'tab-account';
             }
-            if (params.get('profile_saved') || params.get('purge_started')) {
+            if (params.get('purge_started')) {
                 return 'tab-settings';
             }
+            if (params.get('saved') === 'settings' || params.get('tab') === 'settings') {
+                return 'tab-settings';
+            }
+            if (tabParam) {
+                const id = 'tab-' + tabParam;
+                const mapped = LEGACY_TAB_MAP[id] || id;
+                if (document.getElementById(mapped)) return mapped;
+            }
             const stored = localStorage.getItem('activeTab');
-            if (stored && document.getElementById(stored)) {
-                return stored;
+            if (stored) {
+                const mapped = LEGACY_TAB_MAP[stored] || stored;
+                if (document.getElementById(mapped)) return mapped;
             }
             return 'tab-overview';
         }
 
-        const NAV_USER_TABS = ['tab-syslogs', 'tab-settings', 'tab-users'];
+        const NAV_USER_TABS = ['tab-account'];
+
+        function resetRestoreDrawerState() {
+            document.getElementById('versionSection')?.classList.add('hidden');
+            document.getElementById('versionList').innerHTML = '';
+            document.getElementById('selectedOvaPath').value = '';
+            document.getElementById('vmSearchInput')?.classList.add('hidden');
+            document.getElementById('vmSearchInput').value = '';
+            document.getElementById('chainSection')?.classList.add('hidden');
+            updateRestoreSelectionLabel('No backup selected');
+            const subtitle = document.getElementById('restore-drawer-subtitle');
+            if (subtitle) subtitle.textContent = 'Select backup, target host, and deploy';
+            document.getElementById('vmList').innerHTML = '<tr><td colspan="3" class="px-3 py-8 text-center font-medium text-xs" style="color: var(--text-muted)">No backups loaded. Scan repository.</td></tr>';
+            _allGroupedBackups = [];
+        }
+
+        function closeRestoreDrawer() {
+            const drawer = document.getElementById('restore-drawer');
+            if (!drawer) return;
+            drawer.classList.add('hidden');
+            drawer.setAttribute('aria-hidden', 'true');
+            resetRestoreDrawerState();
+        }
+
+        function openRestoreDrawer() {
+            const drawer = document.getElementById('restore-drawer');
+            if (!drawer) return;
+            drawer.classList.remove('hidden');
+            drawer.setAttribute('aria-hidden', 'false');
+            if (typeof loadGroupedBackups === 'function') loadGroupedBackups();
+        }
+
+        function closeInventoryDrawer() {
+            const drawer = document.getElementById('inventory-drawer');
+            if (!drawer) return;
+            drawer.classList.add('hidden');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+
+        function openInventoryDrawer() {
+            const drawer = document.getElementById('inventory-drawer');
+            if (!drawer) return;
+            drawer.classList.remove('hidden');
+            drawer.setAttribute('aria-hidden', 'false');
+            if (typeof updateInventorySelectionCount === 'function') updateInventorySelectionCount();
+        }
+
+        function getInventoryVmCheckboxes() {
+            return [...document.querySelectorAll('#backup-inventory-panel .inventory-vm-cb[data-vm-id]')];
+        }
+
+        function excludeInfraVmsEnabled() {
+            const panel = document.getElementById('backup-inventory-panel');
+            return panel?.dataset.excludeInfraVms === '1';
+        }
+
+        function isInventoryInfraCheckbox(cb) {
+            return cb?.dataset.isInfra === '1';
+        }
+
+        function isInventoryCheckboxSelectable(cb) {
+            return !excludeInfraVmsEnabled() || !isInventoryInfraCheckbox(cb);
+        }
+
+        function syncInventorySelectAll() {
+            const selectAll = document.getElementById('inventory-select-all');
+            const boxes = getInventoryVmCheckboxes();
+            if (!selectAll || !boxes.length) {
+                if (selectAll) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                    selectAll.disabled = true;
+                }
+                return;
+            }
+            selectAll.disabled = false;
+            const selectable = boxes.filter(isInventoryCheckboxSelectable);
+            const target = selectable.length ? selectable : boxes;
+            const checkedCount = target.filter(cb => cb.checked).length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < target.length;
+            selectAll.checked = checkedCount === target.length;
+            selectAll.title = excludeInfraVmsEnabled()
+                ? 'Select all (skips infrastructure VMs)'
+                : 'Select all';
+        }
+
+        function toggleInventorySelectAll(checked) {
+            getInventoryVmCheckboxes().forEach(cb => {
+                if (!checked || isInventoryCheckboxSelectable(cb)) cb.checked = checked;
+                else cb.checked = false;
+            });
+            updateInventorySelectionCount();
+        }
+
+        function updateInventorySelectionCount() {
+            let changes = 0;
+            document.querySelectorAll('.inventory-vm-cb[data-vm-id]').forEach(cb => {
+                const initial = cb.dataset.initial === '1';
+                if (cb.checked !== initial) changes++;
+            });
+            const countEl = document.getElementById('inventorySelectionCount');
+            if (countEl) countEl.textContent = changes ? `${changes} unsaved change${changes === 1 ? '' : 's'}` : 'No changes';
+            const applyBtn = document.getElementById('inventoryApplyBtn');
+            if (applyBtn) applyBtn.disabled = changes === 0;
+            syncInventorySelectAll();
+        }
+
+        function resetInventorySelection() {
+            document.querySelectorAll('.inventory-vm-cb[data-vm-id]').forEach(cb => {
+                cb.checked = cb.dataset.initial === '1';
+            });
+            updateInventorySelectionCount();
+        }
+
+        async function applyInventorySelection() {
+            const changed = [...document.querySelectorAll('.inventory-vm-cb[data-vm-id]')].filter(cb =>
+                cb.checked !== (cb.dataset.initial === '1')
+            );
+            if (!changed.length) return;
+
+            const applyBtn = document.getElementById('inventoryApplyBtn');
+            const prevLabel = applyBtn?.textContent;
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.textContent = 'Adding…';
+            }
+            try {
+                const updates = changed.map(cb => ({
+                    vm_id: parseInt(cb.dataset.vmId, 10),
+                    is_selected: cb.checked,
+                }));
+                const res = await fetch('/api/v1/inventory/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ updates, restagger: true }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                localStorage.setItem('activeTab', 'tab-jobs');
+                sessionStorage.removeItem('novabak_inventory_drawer');
+                location.reload();
+            } catch (e) {
+                if (typeof showAlert === 'function') {
+                    await showAlert('Could not save selection: ' + (e.message || 'Unknown error'), { title: 'Inventory' });
+                }
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = prevLabel || 'Add and close';
+                }
+                updateInventorySelectionCount();
+            }
+        }
+
+        async function spreadInventorySchedules() {
+            const applyBtn = document.getElementById('inventoryApplyBtn');
+            const spreadBtn = document.getElementById('inventorySpreadBtn');
+            if (spreadBtn) {
+                spreadBtn.disabled = true;
+                spreadBtn.textContent = 'Spreading…';
+            }
+            try {
+                const res = await fetch('/api/v1/inventory/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ updates: [], restagger: true }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                localStorage.setItem('activeTab', 'tab-jobs');
+                sessionStorage.removeItem('novabak_inventory_drawer');
+                location.reload();
+            } catch (e) {
+                if (typeof showAlert === 'function') {
+                    await showAlert('Could not spread schedules: ' + (e.message || 'Unknown error'), { title: 'Inventory' });
+                }
+                if (spreadBtn) {
+                    spreadBtn.disabled = false;
+                    spreadBtn.textContent = 'Spread schedules';
+                }
+            } finally {
+                if (applyBtn) applyBtn.disabled = false;
+            }
+        }
 
         function closeUserMenu() {
             document.getElementById('nav-user-menu')?.classList.add('hidden');
@@ -696,13 +1048,22 @@
             menu.classList.toggle('hidden', !open);
         }
 
-        function syncNavActiveState(tabId) {
+        function syncNavActiveState(tabId, options) {
+            options = options || {};
             document.querySelectorAll('.tab-nav').forEach(el => {
                 el.classList.remove('border-[var(--brand)]', 'text-[var(--brand)]');
                 el.classList.add('border-transparent', 'text-[var(--text-muted)]');
             });
             document.querySelectorAll('.nav-user-item, .nav-mobile-item').forEach(el => {
-                el.classList.toggle('active', el.dataset.tab === tabId);
+                if (el.dataset.accountPanel) {
+                    const activePanel = options.accountPanel || localStorage.getItem('accountPanel') || 'profile';
+                    el.classList.toggle('active', tabId === 'tab-account' && el.dataset.accountPanel === activePanel);
+                } else if (el.dataset.tab === 'tab-account' && tabId === 'tab-account') {
+                    const activePanel = options.accountPanel || localStorage.getItem('accountPanel') || 'profile';
+                    el.classList.toggle('active', !el.dataset.accountPanel && activePanel === 'profile');
+                } else {
+                    el.classList.toggle('active', el.dataset.tab === tabId);
+                }
             });
 
             const userBtn = document.getElementById('nav-user-btn');
@@ -722,23 +1083,43 @@
 
         function switchTab(tabId, options) {
             options = options || {};
+            if (LEGACY_TAB_MAP[tabId]) tabId = LEGACY_TAB_MAP[tabId];
+
+            if (tabId === 'tab-settings') {
+                const settingsPanel = options.settingsPanel
+                    || resolveSettingsPanelFromUrl()
+                    || localStorage.getItem('settingsPanel')
+                    || defaultSettingsPanel();
+                if (settingsPanel === 'profile' || settingsPanel === 'api') {
+                    switchTab('tab-account', { accountPanel: settingsPanel });
+                    return;
+                }
+            }
+
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             const panel = document.getElementById(tabId);
             if (!panel) return;
             panel.classList.remove('hidden');
-            syncNavActiveState(tabId);
+            syncNavActiveState(tabId, options);
             localStorage.setItem('activeTab', tabId);
 
-            if (tabId === 'tab-restore' && typeof loadGroupedBackups === 'function') {
-                loadGroupedBackups();
-            }
             if (tabId === 'tab-settings' && typeof showSettingsPanel === 'function') {
-                const settingsPanel = options.settingsPanel || localStorage.getItem('settingsPanel') || 'profile';
+                const settingsPanel = options.settingsPanel
+                    || resolveSettingsPanelFromUrl()
+                    || localStorage.getItem('settingsPanel')
+                    || defaultSettingsPanel();
                 showSettingsPanel(settingsPanel);
                 if (sessionStorage.getItem('novabak_open_wizard') === '1') {
                     sessionStorage.removeItem('novabak_open_wizard');
                     setTimeout(() => { if (typeof window.openSetupWizard === 'function') window.openSetupWizard(); }, 50);
                 }
+            }
+            if (tabId === 'tab-account' && typeof showAccountPanel === 'function') {
+                const accountPanel = options.accountPanel
+                    || resolveAccountPanelFromUrl()
+                    || localStorage.getItem('accountPanel')
+                    || 'profile';
+                showAccountPanel(accountPanel);
             }
             if (tabId === 'tab-overview' && typeof refreshOverview === 'function') {
                 refreshOverview(false);
@@ -777,6 +1158,100 @@
                 if (msgEl) msgEl.style.whiteSpace = '';
             });
         }
+
+        function hostConnectionLabel(type) {
+            if (type === 'vcenter') return 'vCenter';
+            if (type === 'standalone') return 'Standalone ESXi';
+            return 'Auto-detect';
+        }
+
+        function appendRegisteredHost(host) {
+            const list = document.getElementById('registered-hosts-list');
+            if (!list) return;
+            document.getElementById('registered-hosts-empty')?.remove();
+            if (list.querySelector(`[data-host-id="${host.id}"]`)) return;
+            const li = document.createElement('li');
+            li.className = 'px-5 py-3 flex justify-between items-center text-sm';
+            li.dataset.hostId = String(host.id);
+            const conn = hostConnectionLabel(host.connection_type);
+            li.innerHTML = `
+                <div>
+                    <span class="font-medium block font-sans">${escapeHtml(host.name)}</span>
+                    <span class="text-xs" style="color: var(--brand)">${escapeHtml(host.host_ip)} (${escapeHtml(host.username)})</span>
+                    <span class="text-xs block mt-0.5 host-connection-label" style="color: var(--text-muted)">${escapeHtml(conn)}</span>
+                </div>
+                <form action="/delete_esxi_host" method="POST" data-confirm="Remove this host from VMExec?" data-confirm-title="Remove host">
+                    <input type="hidden" name="host_id" value="${host.id}">
+                    <button type="submit" class="text-gray-500 hover:text-red-400 transition-colors" title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </form>`;
+            list.appendChild(li);
+            if (typeof initConfirmForms === 'function') initConfirmForms();
+        }
+
+        function openAddHostModal() {
+            const modal = document.getElementById('addHostModal');
+            if (!modal) return;
+            document.getElementById('addHostError')?.classList.add('hidden');
+            modal.classList.remove('hidden');
+            document.getElementById('add-host-name')?.focus();
+        }
+
+        function closeAddHostModal() {
+            const modal = document.getElementById('addHostModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            document.getElementById('addHostForm')?.reset();
+            document.getElementById('addHostError')?.classList.add('hidden');
+        }
+
+        async function submitAddHost(event) {
+            event.preventDefault();
+            const errEl = document.getElementById('addHostError');
+            const submitBtn = document.getElementById('addHostSubmitBtn');
+            const name = document.getElementById('add-host-name')?.value?.trim();
+            const host_ip = document.getElementById('add-host-ip')?.value?.trim();
+            const username = document.getElementById('add-host-user')?.value?.trim();
+            const password = document.getElementById('add-host-pass')?.value || '';
+            const connection_type = document.getElementById('add-host-type')?.value || 'auto';
+            if (!name || !host_ip || !username || !password) {
+                if (errEl) {
+                    errEl.textContent = 'Fill in alias, host, username, and password.';
+                    errEl.classList.remove('hidden');
+                }
+                return;
+            }
+            const prevLabel = submitBtn?.textContent;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Adding…';
+            }
+            if (errEl) errEl.classList.add('hidden');
+            try {
+                const host = await wizardApi('POST', '/hosts', { name, host_ip, username, password, connection_type });
+                closeAddHostModal();
+                appendRegisteredHost(host);
+                showHostsPanelMessage(`Registered ${host.name}.`, 'success');
+                showHostAddResultModal(host.name, !!host.vddk_installed, host.vddk_message || '');
+            } catch (e) {
+                if (errEl) {
+                    errEl.textContent = e.message || 'Could not add host.';
+                    errEl.classList.remove('hidden');
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = prevLabel || 'Add host';
+                }
+            }
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !document.getElementById('addHostModal')?.classList.contains('hidden')) {
+                closeAddHostModal();
+            }
+        });
 
         let _overviewLoading = false;
         let _overviewLastFetch = 0;
@@ -979,7 +1454,7 @@
                             <div class="text-[11px] ${sevClass}">${a.reason}</div>
                             <div class="text-[10px] font-mono mt-0.5 opacity-50">${a.host_name} · ${a.last_status}${a.last_backup ? ' · ' + overviewFormatTs(a.last_backup) : ''}</div>
                         </div>
-                        <button type="button" onclick="switchTab('tab-jobs')" class="btn-secondary px-2 py-1 text-[10px] font-medium rounded shrink-0">Tasks</button>
+                        <button type="button" onclick="switchTab('tab-jobs')" class="btn-secondary px-2 py-1 text-[10px] font-medium rounded shrink-0">Backup</button>
                     </div>`;
                 }).join('') : '<div class="text-sm py-6 text-center opacity-50 italic">All clear ✓</div>';
             }
@@ -1047,15 +1522,27 @@
         }
 
         function showSettingsPanel(panelId) {
-            document.querySelectorAll('.settings-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('#tab-settings .settings-panel').forEach(p => p.classList.add('hidden'));
             const panel = document.getElementById('settings-panel-' + panelId);
             if (panel) panel.classList.remove('hidden');
-            document.querySelectorAll('.settings-nav-item').forEach(btn => {
+            document.querySelectorAll('#tab-settings .settings-nav-item[data-settings-panel]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.settingsPanel === panelId);
             });
             localStorage.setItem('settingsPanel', panelId);
-            if (panelId === 'api' && typeof loadApiKeys === 'function') loadApiKeys();
+            if (panelId === 'engine' && typeof syncSettingsEngineUi === 'function') syncSettingsEngineUi();
             if (panelId === 'engine' && typeof syncSettingsCbtUi === 'function') syncSettingsCbtUi();
+            if (panelId === 'storage' && typeof syncSecondaryStorageUi === 'function') syncSecondaryStorageUi();
+        }
+
+        function showAccountPanel(panelId) {
+            document.querySelectorAll('#tab-account .account-panel').forEach(p => p.classList.add('hidden'));
+            const panel = document.getElementById('account-panel-' + panelId);
+            if (panel) panel.classList.remove('hidden');
+            document.querySelectorAll('#tab-account .settings-nav-item[data-account-panel]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.accountPanel === panelId);
+            });
+            localStorage.setItem('accountPanel', panelId);
+            if (panelId === 'api' && typeof loadApiKeys === 'function') loadApiKeys();
         }
 
         function initSetupWizardTriggers() {
@@ -1097,47 +1584,78 @@
             switchTab('tab-settings');
         }
 
+        function secondaryCopyBadgeClass(status) {
+            const s = (status || 'none').toLowerCase();
+            if (s === 'ok') return 'status-success';
+            if (s === 'failed') return 'status-error';
+            if (s === 'copying') return 'status-running';
+            return 'status-neutral';
+        }
+
+        function secondaryCopyBadgeLabel(status) {
+            const s = (status || 'none').toLowerCase();
+            const labels = { ok: 'OK', failed: 'Failed', skipped: 'Skipped', copying: 'Copying', none: '—' };
+            return labels[s] || '—';
+        }
+
+        function secondaryCopySortKey(status) {
+            const s = (status || 'none').toLowerCase();
+            const order = { copying: '0-copying', failed: '1-failed', none: '2-none', skipped: '3-skipped', ok: '4-ok' };
+            return order[s] || '2-none';
+        }
+
+        function updateSecondaryCopyBadge(row, status) {
+            if (!row) return;
+            const s = (status || 'none').toLowerCase();
+            row.setAttribute('data-secondary-copy', s);
+            row.setAttribute('data-secondary-copy-sort', secondaryCopySortKey(s));
+            const vmId = row.id.replace('row-', '');
+            const el = document.getElementById('list-secondary-copy-' + vmId);
+            if (el) {
+                el.className = 'status-badge ' + secondaryCopyBadgeClass(s) + ' secondary-copy-badge';
+                el.textContent = secondaryCopyBadgeLabel(s);
+            }
+        }
+
         function filterJobs() {
             const searchQ = document.getElementById('jobSearch').value.toLowerCase();
             const filterStat = document.getElementById('jobFilter').value;
+            const copyFilterEl = document.getElementById('jobCopyFilter');
+            const copyFilter = copyFilterEl ? copyFilterEl.value : 'all';
             const rows = document.querySelectorAll('.vm-job-row');
+            let visibleRows = 0;
 
             rows.forEach(row => {
                 const name = row.getAttribute('data-name').toLowerCase();
                 const status = row.getAttribute('data-status');
                 const isScheduled = row.getAttribute('data-scheduled') === 'true';
                 const isRunning = row.getAttribute('data-running') === 'true';
-                const vmId = row.id.replace('row-', '');
+                const copyStatus = (row.getAttribute('data-secondary-copy') || 'none').toLowerCase();
 
                 let matchesSearch = name.includes(searchQ);
                 let matchesStatus = true;
+                let matchesCopy = true;
 
                 if (filterStat === 'active') matchesStatus = isRunning;
                 else if (filterStat === 'scheduled') matchesStatus = isScheduled;
                 else if (filterStat === 'error') matchesStatus = (status === 'Failed');
                 else if (filterStat === 'success') matchesStatus = (status === 'Success');
 
-                const show = matchesSearch && matchesStatus;
+                if (copyFilter !== 'all') matchesCopy = (copyStatus === copyFilter);
+
+                const show = matchesSearch && matchesStatus && matchesCopy;
                 row.style.display = show ? '' : 'none';
+                if (show) visibleRows++;
             });
 
-            document.querySelectorAll('.vm-job-card').forEach(card => {
-                const name = card.getAttribute('data-name').toLowerCase();
-                const status = card.getAttribute('data-status');
-                const isScheduled = card.getAttribute('data-scheduled') === 'true';
-                const isRunning = card.getAttribute('data-running') === 'true';
-                let matchesSearch = name.includes(searchQ);
-                let matchesStatus = true;
-                if (filterStat === 'active') matchesStatus = isRunning;
-                else if (filterStat === 'scheduled') matchesStatus = isScheduled;
-                else if (filterStat === 'error') matchesStatus = (status === 'Failed');
-                else if (filterStat === 'success') matchesStatus = (status === 'Success');
-                card.style.display = (matchesSearch && matchesStatus) ? 'block' : 'none';
-            });
+            const filterEmpty = document.getElementById('jobsFilterEmpty');
+            if (filterEmpty) {
+                filterEmpty.classList.toggle('hidden', rows.length === 0 || visibleRows > 0);
+            }
             updateJobsBulkBar();
         }
 
-        let _jobsSort = { key: 'name', dir: 'asc' };
+        let _jobsSort = { key: 'schedule', dir: 'asc' };
 
         function sortJobsTable(key) {
             if (_jobsSort.key === key) {
@@ -1170,9 +1688,12 @@
                 } else if (key === 'status') {
                     av = ar.getAttribute('data-status-sort') || '';
                     bv = br.getAttribute('data-status-sort') || '';
+                } else if (key === 'secondarycopy') {
+                    av = ar.getAttribute('data-secondary-copy-sort') || '';
+                    bv = br.getAttribute('data-secondary-copy-sort') || '';
                 } else if (key === 'schedule') {
-                    av = (ar.getAttribute('data-schedule') || '').toLowerCase();
-                    bv = (br.getAttribute('data-schedule') || '').toLowerCase();
+                    av = parseInt(ar.getAttribute('data-schedule-sort') || '0', 10);
+                    bv = parseInt(br.getAttribute('data-schedule-sort') || '0', 10);
                 } else {
                     return 0;
                 }
@@ -1195,12 +1716,7 @@
         }
 
         function jobItemVmId(el) {
-            return el.id.replace('row-', '').replace('card-', '');
-        }
-
-        function isJobsCardView() {
-            const grid = document.getElementById('jobsGridView');
-            return grid && !grid.classList.contains('hidden');
+            return el.id.replace('row-', '');
         }
 
         function getVisibleJobItems() {
@@ -1218,10 +1734,6 @@
 
         function updateJobsBulkBar() {
             const bar = document.getElementById('jobsBulkBar');
-            if (isJobsCardView()) {
-                if (bar) bar.classList.add('hidden');
-                return;
-            }
             const selected = getSelectedJobRows();
             const countEl = document.getElementById('jobsBulkCount');
             const selectAll = document.getElementById('jobs-select-all');
@@ -1377,22 +1889,6 @@
             filterJobs();
         }
 
-        function setJobsView(view) {
-            const list = document.getElementById('jobsListView');
-            const grid = document.getElementById('jobsGridView');
-            const btnList = document.getElementById('jobsViewList');
-            const btnCards = document.getElementById('jobsViewCards');
-            if (!list || !grid) return;
-            const isList = view === 'list';
-            list.classList.toggle('hidden', !isList);
-            grid.classList.toggle('hidden', isList);
-            btnList?.classList.toggle('active', isList);
-            btnCards?.classList.toggle('active', !isList);
-            localStorage.setItem('jobsView', view);
-            if (!isList) clearJobSelection();
-            updateJobsBulkBar();
-        }
-
         function closeAllJobActionsMenus() {
             document.querySelectorAll('.job-actions-menu').forEach(m => m.classList.add('hidden'));
         }
@@ -1408,12 +1904,51 @@
             }
         }
 
+        function jobStatusBadgeMeta(status, isActive) {
+            if (isActive) return { cls: 'status-running', label: 'Running', sort: '0-running' };
+            const s = status || 'Never';
+            if (s === 'Success') return { cls: 'status-success', label: 'Success', sort: '3-success' };
+            if (s === 'Failed') return { cls: 'status-error', label: 'Failed', sort: '1-failed' };
+            if (s === 'Cancelled') return { cls: 'status-cancelled', label: 'Cancelled', sort: '2-cancelled' };
+            if (s === 'Skipped') return { cls: 'status-neutral', label: 'Skipped', sort: '4-skipped' };
+            return { cls: 'status-neutral', label: 'Idle', sort: '5-idle' };
+        }
+
+        function formatLastBackup(ts) {
+            if (!ts) return 'Never';
+            const d = new Date(ts * 1000);
+            if (Number.isNaN(d.getTime())) return 'Never';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function updateJobStatusBadge(vm_id, info, isActive) {
+            const el = document.getElementById('list-status-badge-' + vm_id);
+            if (!el) return;
+            const meta = jobStatusBadgeMeta(info && info.last_status, isActive);
+            el.className = 'status-badge ' + meta.cls;
+            el.textContent = meta.label;
+            const row = document.getElementById('row-' + vm_id);
+            if (row) {
+                if (info && info.last_status) row.setAttribute('data-status', info.last_status);
+                row.setAttribute('data-status-sort', meta.sort);
+                if (info && info.last_backup_ts) row.setAttribute('data-lastbackup', String(info.last_backup_ts));
+            }
+        }
+
+        function updateJobLastBackup(vm_id, info) {
+            const el = document.getElementById('list-last-backup-' + vm_id);
+            if (!el || !info) return;
+            el.textContent = formatLastBackup(info.last_backup_ts);
+        }
+
         function updateJobProgressUI(vm_id, info) {
             const isActive = info && (info.current_action !== "" || (info.progress > 0 && info.progress < 100));
             const speedBadge = info && info.speed_mbps > 0 ? ` · ${info.speed_mbps} MB/s` : '';
             const actionText = (info && info.current_action) ? info.current_action + speedBadge : 'Processing...';
 
             const listWrap = document.getElementById('list-prog-wrap-' + vm_id);
+            const idleEl = document.getElementById('list-prog-idle-' + vm_id);
             if (listWrap) {
                 if (isActive) {
                     listWrap.classList.remove('hidden');
@@ -1423,8 +1958,13 @@
                     if (pct) pct.innerText = info.progress + '%';
                     if (bar) bar.style.width = info.progress + '%';
                     if (text) text.innerHTML = actionText;
+                    if (idleEl) idleEl.classList.add('hidden');
                 } else {
                     listWrap.classList.add('hidden');
+                    if (idleEl) {
+                        idleEl.classList.remove('hidden');
+                        idleEl.textContent = '—';
+                    }
                 }
             }
             const listRun = document.getElementById('list-form-run-' + vm_id);
@@ -1432,48 +1972,56 @@
             if (listRun) listRun.classList.toggle('hidden', isActive);
             if (listStop) listStop.classList.toggle('hidden', !isActive);
 
-            const cardWrap = document.getElementById('prog-wrap-' + vm_id);
-            if (cardWrap) {
-                if (isActive) {
-                    cardWrap.classList.remove('hidden');
-                    const pct = document.getElementById('prog-pct-' + vm_id);
-                    const bar = document.getElementById('prog-bar-' + vm_id);
-                    const text = document.getElementById('prog-text-' + vm_id);
-                    if (pct) pct.innerText = info.progress + '%';
-                    if (bar) bar.style.width = info.progress + '%';
-                    if (text) text.innerHTML = actionText;
-                } else {
-                    cardWrap.classList.add('hidden');
-                }
-            }
-            const cardRun = document.getElementById('form-run-' + vm_id);
-            const cardStop = document.getElementById('form-stop-' + vm_id);
-            if (cardRun) cardRun.classList.toggle('hidden', isActive);
-            if (cardStop) cardStop.classList.toggle('hidden', !isActive);
-
             const row = document.getElementById('row-' + vm_id);
-            const card = document.getElementById('card-' + vm_id);
             if (row) row.setAttribute('data-running', isActive ? 'true' : 'false');
-            if (card) card.setAttribute('data-running', isActive ? 'true' : 'false');
+            updateJobStatusBadge(vm_id, info, isActive);
+            updateJobLastBackup(vm_id, info);
+            if (row && info && info.secondary_copy_status !== undefined) {
+                updateSecondaryCopyBadge(row, info.secondary_copy_status);
+            }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const settingsPanel = params.get('panel');
             const activeTab = getInitialTabId();
-            const switchOpts = (activeTab === 'tab-settings' && settingsPanel)
-                ? { settingsPanel }
-                : undefined;
+            const switchOpts = {};
+            if (activeTab === 'tab-settings') {
+                switchOpts.settingsPanel = resolveSettingsPanelFromUrl()
+                    || localStorage.getItem('settingsPanel')
+                    || defaultSettingsPanel();
+            }
+            if (activeTab === 'tab-account') {
+                switchOpts.accountPanel = resolveAccountPanelFromUrl()
+                    || localStorage.getItem('accountPanel')
+                    || 'profile';
+            }
             if (document.getElementById(activeTab)) { switchTab(activeTab, switchOpts); }
 
+            if (sessionStorage.getItem('novabak_inventory_drawer') === '1') {
+                sessionStorage.removeItem('novabak_inventory_drawer');
+                openInventoryDrawer();
+            }
+
             if (params.get('profile_saved')) {
-                switchTab('tab-settings', { settingsPanel: 'profile' });
+                switchTab('tab-account', { accountPanel: 'profile' });
                 document.getElementById('profile-saved-msg')?.classList.remove('hidden');
             }
             if (params.get('purge_started')) {
                 switchTab('tab-settings', { settingsPanel: 'maintenance' });
                 document.getElementById('purge-started-msg')?.classList.remove('hidden');
             }
+            if (params.get('saved') === 'settings') {
+                switchTab('tab-settings', {
+                    settingsPanel: resolveSettingsPanelFromUrl()
+                        || localStorage.getItem('settingsPanel')
+                        || defaultSettingsPanel(),
+                });
+                showSettingsSaveToast('Settings saved.', false);
+                if (window.history.replaceState) {
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            }
+            const settingsPanel = resolveSettingsPanelFromUrl();
             const hostErr = params.get('error');
             if (hostErr && (settingsPanel === 'hosts' || activeTab === 'tab-settings')) {
                 switchTab('tab-settings', { settingsPanel: 'hosts' });
@@ -1495,7 +2043,11 @@
                 showHostsPanelMessage('Host removed.', 'success');
             }
 
-            if (params.get('tab') || params.get('panel') || params.get('error') || params.get('profile_saved') || params.get('purge_started') || params.get('host_ok') || params.get('host_removed') || params.get('vddk_msg')) {
+            if (params.get('tab') === 'users' || params.get('new_user') || params.get('reset_user') || params.get('user_ok') || params.get('user_error')) {
+                switchTab('tab-settings', { settingsPanel: 'users' });
+            }
+
+            if (params.get('tab') || params.get('panel') || params.get('error') || params.get('profile_saved') || params.get('purge_started') || params.get('host_ok') || params.get('host_removed') || params.get('vddk_msg') || params.get('new_user') || params.get('reset_user') || params.get('user_ok') || params.get('user_error')) {
                 window.history.replaceState({}, '', window.location.pathname);
             }
             
@@ -1503,12 +2055,23 @@
             applyTheme(savedTheme);
             
             filterJobs();
+            sortJobsTable('schedule');
             updateJobsSortIndicators();
-            setJobsView(localStorage.getItem('jobsView') || 'list');
             initConfirmForms();
+            initSettingsConfigForm();
+            initSettingsEngineToggles();
             initSetupWizardTriggers();
             updateSchedulerPauseUi();
             if (typeof syncSettingsCbtUi === 'function') syncSettingsCbtUi();
+            if (typeof syncSettingsEngineUi === 'function') syncSettingsEngineUi();
+            if (typeof syncSecondaryStorageUi === 'function') syncSecondaryStorageUi();
+
+            document.getElementById('api-keys-table-body')?.addEventListener('click', e => {
+                const btn = e.target.closest('.api-key-revoke-btn');
+                if (!btn) return;
+                e.preventDefault();
+                revokeApiKey(parseInt(btn.dataset.keyId, 10), btn.dataset.keyName || '');
+            });
 
             document.getElementById('appModalCancel')?.addEventListener('click', () => closeAppModal(false));
             document.getElementById('appModalConfirm')?.addEventListener('click', () => closeAppModal(true));
@@ -1521,6 +2084,13 @@
                 if (wrap && !wrap.contains(e.target)) closeThemeMenu();
                 if (!e.target.closest('.job-actions-wrap')) closeAllJobActionsMenus();
                 if (!e.target.closest('.nav-user-wrap')) closeUserMenu();
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    closeInventoryDrawer();
+                    closeRestoreDrawer();
+                }
             });
             
             // Auto scroll terminal on load
@@ -1546,9 +2116,9 @@
 
                 <div class="nav-primary hidden md:flex">
                     <button id="nav-tab-overview" onclick="switchTab('tab-overview')" class="tab-nav border-transparent" style="color: var(--text-muted)">Overview</button>
-                    <button id="nav-tab-jobs" onclick="switchTab('tab-jobs')" class="tab-nav border-transparent" style="color: var(--text-muted)">Tasks</button>
-                    <button id="nav-tab-inventory" onclick="switchTab('tab-inventory')" class="tab-nav border-transparent" style="color: var(--text-muted)">Inventory</button>
-                    <button id="nav-tab-restore" onclick="switchTab('tab-restore')" class="tab-nav border-transparent" style="color: var(--text-muted)">Recovery</button>
+                    <button id="nav-tab-jobs" onclick="switchTab('tab-jobs')" class="tab-nav border-transparent" style="color: var(--text-muted)">Backup</button>
+                    <button id="nav-tab-restore" onclick="switchTab('tab-restore')" class="tab-nav border-transparent" style="color: var(--text-muted)">Restore</button>
+                    <button id="nav-tab-settings" onclick="switchTab('tab-settings')" class="tab-nav border-transparent" style="color: var(--text-muted)">Settings</button>
                 </div>
 
                 <div class="nav-utilities">
@@ -1586,11 +2156,9 @@
                             {% if current_user %}
                             <div class="nav-user-menu-header">{{ current_user.username }}</div>
                             {% endif %}
-                            <button type="button" class="nav-user-item" data-tab="tab-syslogs" onclick="switchTab('tab-syslogs')">System Logs</button>
-                            <button type="button" class="nav-user-item" data-tab="tab-settings" onclick="switchTab('tab-settings')">Settings</button>
+                            <button type="button" class="nav-user-item" data-tab="tab-account" data-account-panel="profile" onclick="switchTab('tab-account', { accountPanel: 'profile' })">Profile</button>
                             {% if current_user and current_user.role == 'admin' %}
-                            <button type="button" class="nav-user-item" data-tab="tab-users" onclick="switchTab('tab-users')">Users</button>
-                            <button type="button" class="nav-user-item" data-open-setup-wizard>Setup wizard</button>
+                            <button type="button" class="nav-user-item" data-tab="tab-account" data-account-panel="api" onclick="switchTab('tab-account', { accountPanel: 'api' })">API Keys</button>
                             {% endif %}
                             <div class="nav-user-menu-divider"></div>
                             <a href="/logout" class="nav-user-signout">Sign out</a>
@@ -1602,15 +2170,13 @@
             <div id="nav-mobile-menu" class="nav-mobile-menu hidden md:hidden">
                 <div class="nav-mobile-section">Operations</div>
                 <button type="button" class="nav-mobile-item" data-tab="tab-overview" onclick="switchTab('tab-overview')">Overview</button>
-                <button type="button" class="nav-mobile-item" data-tab="tab-jobs" onclick="switchTab('tab-jobs')">Tasks</button>
-                <button type="button" class="nav-mobile-item" data-tab="tab-inventory" onclick="switchTab('tab-inventory')">Inventory</button>
-                <button type="button" class="nav-mobile-item" data-tab="tab-restore" onclick="switchTab('tab-restore')">Recovery</button>
-                <div class="nav-mobile-section">Account</div>
-                <button type="button" class="nav-mobile-item" data-tab="tab-syslogs" onclick="switchTab('tab-syslogs')">System Logs</button>
+                <button type="button" class="nav-mobile-item" data-tab="tab-jobs" onclick="switchTab('tab-jobs')">Backup</button>
+                <button type="button" class="nav-mobile-item" data-tab="tab-restore" onclick="switchTab('tab-restore')">Restore</button>
                 <button type="button" class="nav-mobile-item" data-tab="tab-settings" onclick="switchTab('tab-settings')">Settings</button>
+                <div class="nav-mobile-section">Account</div>
+                <button type="button" class="nav-mobile-item" data-tab="tab-account" data-account-panel="profile" onclick="switchTab('tab-account', { accountPanel: 'profile' })">Profile</button>
                 {% if current_user and current_user.role == 'admin' %}
-                <button type="button" class="nav-mobile-item" data-tab="tab-users" onclick="switchTab('tab-users')">Users</button>
-                <button type="button" class="nav-mobile-item" data-open-setup-wizard>Setup wizard</button>
+                <button type="button" class="nav-mobile-item" data-tab="tab-account" data-account-panel="api" onclick="switchTab('tab-account', { accountPanel: 'api' })">API Keys</button>
                 {% endif %}
                 <a href="/logout" class="nav-mobile-signout">Sign out</a>
             </div>
@@ -1621,123 +2187,23 @@
 
         {% include 'partials/overview_tab.html' %}
 
-        <!-- USERS TAB (admin only) -->
-        {% if current_user and current_user.role == 'admin' %}
-        <div id="tab-users" class="tab-content hidden">
-            <h2 class="text-2xl font-bold mb-6">User Management</h2>
+        {% include 'partials/account_tab.html' %}
 
-            <!-- Feedback Banner -->
-            <div id="user-msg" class="hidden mb-4 px-4 py-3 rounded text-sm font-medium"></div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Users Table -->
-                <div class="lg:col-span-2 card overflow-hidden">
-                    <div class="px-5 py-3 border-b font-semibold flex justify-between items-center" style="border-color: var(--border-color); background: var(--bg-nav)">
-                        <span>Users</span>
-                        <span class="text-xs opacity-50">{{ users|length }} user(s)</span>
-                    </div>
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-xs uppercase" style="color: var(--text-muted); border-bottom: 1px solid var(--border-color)">
-                                <th class="px-5 py-3 text-left">Username</th>
-                                <th class="px-5 py-3 text-left">Role</th>
-                                <th class="px-5 py-3 text-left">Email</th>
-                                <th class="px-5 py-3 text-left">MFA</th>
-                                <th class="px-5 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y" style="border-color: var(--border-color)">
-                        {% for u in users %}
-                            <tr class="{% if u.username == current_user.username %}opacity-60{% endif %}">
-                                <td class="px-5 py-3 font-medium">
-                                    {{ u.username }}
-                                    {% if u.username == current_user.username %}<span class="text-[10px] ml-1 opacity-50">(you)</span>{% endif %}
-                                </td>
-                                <td class="px-5 py-3">
-                                    <form action="/admin/update_role" method="POST">
-                                        <input type="hidden" name="user_id" value="{{ u.id }}">
-                                        <select name="role" onchange="this.form.submit()" class="text-xs py-1 px-2 rounded border" style="border-color: var(--border-color)" {% if u.username == current_user.username %}disabled{% endif %}>
-                                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
-                                            <option value="operator" {% if u.role == 'operator' %}selected{% endif %}>Operator</option>
-                                            <option value="viewer" {% if u.role == 'viewer' %}selected{% endif %}>Viewer</option>
-                                        </select>
-                                    </form>
-                                </td>
-                                <td class="px-5 py-3 text-xs font-mono" style="color: var(--text-muted)">
-                                    {{ u.email or '<span class="opacity-40 italic">—</span>' | safe }}
-                                </td>
-                                <td class="px-5 py-3">
-                                    {% if u.is_mfa_enabled %}
-                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Enabled</span>
-                                    {% else %}
-                                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Pending</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex gap-2 justify-end">
-                                        <!-- Reset Password (available for all users including self) -->
-                                        <form action="/admin/reset_password" method="POST" data-confirm="Reset password for {{ u.username }}?" data-confirm-title="Reset password">
-                                            <input type="hidden" name="user_id" value="{{ u.id }}">
-                                            <button type="submit" class="text-xs px-2 py-1 rounded border hover:bg-blue-500/10 hover:border-blue-500 transition-colors" style="border-color: var(--border-color)" title="Reset Password">
-                                                Reset PW
-                                            </button>
-                                        </form>
-                                        <!-- Reset MFA (available for all users including self) -->
-                                        <form action="/admin/reset_mfa" method="POST" data-confirm="Reset MFA for {{ u.username }}? They will be prompted to set it up again on next login." data-confirm-title="Reset MFA">
-                                            <input type="hidden" name="user_id" value="{{ u.id }}">
-                                            <button type="submit" class="text-xs px-2 py-1 rounded border hover:bg-yellow-500/10 hover:border-yellow-500 transition-colors" style="border-color: var(--border-color)" title="Reset MFA">
-                                                Reset MFA
-                                            </button>
-                                        </form>
-                                        {% if u.username != current_user.username %}
-                                        <!-- Delete (not available for self) -->
-                                        <form action="/admin/delete_user" method="POST" data-confirm="Delete user {{ u.username }}? This cannot be undone." data-confirm-title="Delete user">
-                                            <input type="hidden" name="user_id" value="{{ u.id }}">
-                                            <button type="submit" class="text-xs px-2 py-1 rounded border text-red-400 hover:bg-red-500/10 hover:border-red-500 transition-colors" style="border-color: var(--border-color)" title="Delete">
-                                                Delete
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Add User Card -->
-                <div class="card p-5">
-                    <h3 class="font-semibold text-base mb-4 pb-2 border-b" style="border-color: var(--border-color)">Add New User</h3>
-                    <form action="/admin/add_user" method="POST" class="space-y-4">
-                        <div>
-                            <span class="input-label">Username</span>
-                            <input type="text" name="username" required placeholder="e.g. john.smith" class="w-full py-2 px-3 mt-1 text-sm" autocomplete="off">
-                        </div>
-                        <div>
-                            <span class="input-label">Role</span>
-                            <select name="role" class="w-full py-2 px-3 mt-1 text-sm">
-                                <option value="operator">Operator (backup/restore)</option>
-                                <option value="viewer">Viewer (read-only)</option>
-                                <option value="admin">Admin (full access)</option>
-                            </select>
-                        </div>
-                        <p class="text-[10px] opacity-50">A temporary password will be generated and shown once. The user will be required to setup MFA on first login.</p>
-                        <button type="submit" class="btn-primary w-full py-2 text-sm font-semibold">Create User</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- JOBS TAB -->
+        <!-- BACKUP TAB -->
         <div id="tab-jobs" class="tab-content hidden">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0 gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div class="flex flex-wrap items-center gap-3">
-                    <h2 class="text-2xl font-bold">Backup Tasks</h2>
+                    <h2 class="text-2xl font-bold">Backup</h2>
                     <button type="button" id="jobsPauseToggle" onclick="toggleJobsPause()" class="btn-secondary px-3 py-1.5 text-xs font-semibold whitespace-nowrap">Pause all</button>
                 </div>
+                <button type="button" onclick="openInventoryDrawer()" class="btn-secondary px-3 py-2 text-sm font-semibold inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                    Inventory
+                </button>
+            </div>
+
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 space-y-4 md:space-y-0 gap-4">
+                <h3 class="text-lg font-bold">Schedules</h3>
                 
                 <div class="flex space-x-4 w-full md:w-auto">
                     <div class="relative flex-grow md:w-64">
@@ -1753,10 +2219,14 @@
                         <option value="error">Failed Backups</option>
                         <option value="success">Successful Backups</option>
                     </select>
-                    <div class="flex rounded-md overflow-hidden border" style="border-color: var(--border-color)">
-                        <button type="button" id="jobsViewList" onclick="setJobsView('list')" class="jobs-view-btn active rounded-none">List</button>
-                        <button type="button" id="jobsViewCards" onclick="setJobsView('cards')" class="jobs-view-btn rounded-none border-l" style="border-color: var(--border-color)">Cards</button>
-                    </div>
+                    <select id="jobCopyFilter" onchange="filterJobs()" class="py-2 px-3 text-sm flex-none" title="Filter by secondary copy status">
+                        <option value="all">2nd Copy: All</option>
+                        <option value="ok">2nd Copy: OK</option>
+                        <option value="failed">2nd Copy: Failed</option>
+                        <option value="skipped">2nd Copy: Skipped</option>
+                        <option value="copying">2nd Copy: Copying</option>
+                        <option value="none">2nd Copy: N/A</option>
+                    </select>
                 </div>
             </div>
 
@@ -1786,6 +2256,7 @@
                                 <th class="jobs-sort-th" data-sort-key="name" onclick="sortJobsTable('name')">Virtual Machine<span class="jobs-sort-ind"></span></th>
                                 <th class="jobs-sort-th" data-sort-key="host" onclick="sortJobsTable('host')">Host<span class="jobs-sort-ind"></span></th>
                                 <th class="jobs-sort-th" data-sort-key="status" onclick="sortJobsTable('status')">Status<span class="jobs-sort-ind"></span></th>
+                                <th class="jobs-sort-th" data-sort-key="secondarycopy" onclick="sortJobsTable('secondarycopy')">2nd Copy<span class="jobs-sort-ind"></span></th>
                                 <th>Progress</th>
                                 <th class="jobs-sort-th" data-sort-key="lastbackup" onclick="sortJobsTable('lastbackup')">Last Backup<span class="jobs-sort-ind"></span></th>
                                 <th class="jobs-sort-th" data-sort-key="schedule" onclick="sortJobsTable('schedule')">Schedule<span class="jobs-sort-ind"></span></th>
@@ -1793,16 +2264,19 @@
                             </tr>
                         </thead>
                         <tbody>
-                        {% for vm in vms %}
-                            {% if vm.is_selected %}
+                        {% if selected_vms %}
+                        {% for vm in selected_vms %}
                             <tr class="vm-job-row"
                                 id="row-{{ vm.id }}"
                                 data-name="{{ vm.vm_name }}"
                                 data-host="{{ vm.esxi_host.name }}"
                                 data-lastbackup="{{ vm.last_backup.timestamp() if vm.last_backup else 0 }}"
                                 data-schedule="{{ (vm.schedule_frequency or 'daily') }} {{ '%02d'|format(vm.schedule_hour) }}:{{ '%02d'|format(vm.schedule_minute) }}"
+                                data-schedule-sort="{{ vm.schedule_hour * 60 + vm.schedule_minute }}"
                                 data-status="{{ vm.last_status or 'None' }}"
                                 data-status-sort="{% if vm.current_action and vm.current_action != '' %}0-running{% elif vm.last_status == 'Failed' %}1-failed{% elif vm.last_status == 'Cancelled' %}2-cancelled{% elif vm.last_status == 'Success' %}3-success{% elif vm.last_status == 'Skipped' %}4-skipped{% else %}5-idle{% endif %}"
+                                data-secondary-copy="{{ vm.last_secondary_copy_status or 'none' }}"
+                                data-secondary-copy-sort="{% set sc = vm.last_secondary_copy_status or 'none' %}{% if sc == 'copying' %}0-copying{% elif sc == 'failed' %}1-failed{% elif sc == 'none' %}2-none{% elif sc == 'skipped' %}3-skipped{% elif sc == 'ok' %}4-ok{% else %}2-none{% endif %}"
                                 data-scheduled="{{ 'true' if vm.is_job_active else 'false' }}"
                                 data-running="{{ 'true' if (vm.current_action and vm.current_action != '') else 'false' }}">
                                 <td class="text-center">
@@ -1815,19 +2289,23 @@
                                 <td class="text-xs font-mono" style="color: var(--brand)">{{ vm.esxi_host.name }}</td>
                                 <td>
                                     {% if vm.current_action and vm.current_action != '' %}
-                                        <span class="status-badge status-running">Running</span>
+                                        <span id="list-status-badge-{{ vm.id }}" class="status-badge status-running">Running</span>
                                     {% elif vm.last_status == 'Success' %}
-                                        <span class="status-badge status-success">Success</span>
+                                        <span id="list-status-badge-{{ vm.id }}" class="status-badge status-success">Success</span>
                                     {% elif vm.last_status == 'Failed' %}
-                                        <span class="status-badge status-error">Failed</span>
+                                        <span id="list-status-badge-{{ vm.id }}" class="status-badge status-error">Failed</span>
                                     {% elif vm.last_status == 'Cancelled' %}
-                                        <span class="status-badge status-cancelled">Cancelled</span>
+                                        <span id="list-status-badge-{{ vm.id }}" class="status-badge status-cancelled">Cancelled</span>
                                     {% else %}
-                                        <span class="status-badge status-neutral">Idle</span>
+                                        <span id="list-status-badge-{{ vm.id }}" class="status-badge status-neutral">Idle</span>
                                     {% endif %}
                                     {% if vm.is_job_active %}
                                         <span class="ml-1 text-[10px] opacity-60">scheduled</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    {% set sc = vm.last_secondary_copy_status or 'none' %}
+                                    <span id="list-secondary-copy-{{ vm.id }}" class="status-badge {% if sc == 'ok' %}status-success{% elif sc == 'failed' %}status-error{% elif sc == 'copying' %}status-running{% else %}status-neutral{% endif %} secondary-copy-badge">{% if sc == 'ok' %}OK{% elif sc == 'failed' %}Failed{% elif sc == 'skipped' %}Skipped{% elif sc == 'copying' %}Copying{% else %}—{% endif %}</span>
                                 </td>
                                 <td class="min-w-[140px]">
                                     <div id="list-prog-wrap-{{ vm.id }}" class="{% if vm.current_action %}block{% else %}hidden{% endif %}">
@@ -1839,7 +2317,7 @@
                                     </div>
                                     <span id="list-prog-idle-{{ vm.id }}" class="text-xs" style="color: var(--text-muted)">{% if not vm.current_action %}—{% endif %}</span>
                                 </td>
-                                <td class="text-xs font-mono whitespace-nowrap" style="color: var(--text-muted)">{{ vm.last_backup.strftime('%Y-%m-%d %H:%M') if vm.last_backup else 'Never' }}</td>
+                                <td class="text-xs font-mono whitespace-nowrap" style="color: var(--text-muted)" id="list-last-backup-{{ vm.id }}">{{ vm.last_backup.strftime('%Y-%m-%d %H:%M') if vm.last_backup else 'Never' }}</td>
                                 <td class="text-xs whitespace-nowrap">{{ (vm.schedule_frequency or 'daily')|title }} {{ '%02d'|format(vm.schedule_hour) }}:{{ '%02d'|format(vm.schedule_minute) }} · keep {{ vm.retention_count }}{% if vm.cbt_enabled is not defined or vm.cbt_enabled %} · CBT{% else %} · full{% endif %}</td>
                                 <td class="text-right whitespace-nowrap actions-cell">
                                     <div class="inline-flex gap-1 items-center justify-end">
@@ -1865,286 +2343,109 @@
                                     </div>
                                 </td>
                             </tr>
-                            {% endif %}
-                        {% else %}
-                            <tr><td colspan="8" class="py-10 text-center" style="color: var(--text-muted)">No target VMs selected. Go to Inventory to select targets.</td></tr>
                         {% endfor %}
+                        <tr id="jobsFilterEmpty" class="hidden"><td colspan="9" class="py-10 text-center" style="color: var(--text-muted)">No VMs match your search or filter.</td></tr>
+                        {% else %}
+                            <tr id="jobsListEmpty"><td colspan="8" class="py-12 text-center" style="color: var(--text-muted)">
+                                <div class="text-sm font-medium mb-1">No backup tasks configured</div>
+                                <div class="text-xs opacity-70 mb-3">Select VMs in Inventory, then click Add and close.</div>
+                                <button type="button" onclick="openInventoryDrawer()" class="btn-secondary px-3 py-1.5 text-xs font-semibold">Open Inventory</button>
+                            </td></tr>
+                        {% endif %}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden" id="jobsGridView">
-                {% for vm in vms %}
-                    {% if vm.is_selected %}
-                    <div class="card p-5 vm-job-card flex flex-col" 
-                         id="card-{{ vm.id }}"
-                         data-name="{{ vm.vm_name }}"
-                         data-status="{{ vm.last_status or 'None' }}"
-                         data-scheduled="{{ 'true' if vm.is_job_active else 'false' }}"
-                         data-running="{{ 'true' if (vm.current_action and vm.current_action != '') else 'false' }}">
-                        
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-lg truncate max-w-[200px]" title="{{ vm.vm_name }}">{{ vm.vm_name }}</h3>
-                                <div class="text-[10px] mt-1 font-mono font-medium opacity-80" style="color: var(--text-muted)">
-                                    {{ vm.cpu_count }} vCPU • {% if vm.memory_mb %}{{ vm.memory_mb // 1024 }}{% else %}0{% endif %}GB RAM • {{ vm.storage_gb }}GB Disk
-                                </div>
-                                <div class="text-xs mt-1 flex items-center" style="color: var(--brand)">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
-                                    {{ vm.esxi_host.name }}
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <button type="button" id="form-stop-{{ vm.id }}" onclick="stopVmJob({{ vm.id }})" class="hidden btn-danger p-1.5 rounded" title="Abort">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                                <form action="/run_now" method="POST" id="form-run-{{ vm.id }}">
-                                    <input type="hidden" name="vm_id" value="{{ vm.id }}">
-                                    <button type="submit" class="btn-primary p-1.5 rounded flex items-center text-xs px-2 shadow-sm font-medium">
-                                        <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                                        Run Now
-                                    </button>
-                                </form>
-                                <button type="button" class="job-remove-btn btn-secondary p-1.5 rounded hover:text-red-400 hover:border-red-400/50" title="Remove from tasks" data-vm-id="{{ vm.id }}" data-vm-name="{{ vm.vm_name|e }}">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>
+            <div id="inventory-drawer" class="inventory-drawer hidden" aria-hidden="true">
+                <div class="inventory-drawer-backdrop" onclick="closeInventoryDrawer()"></div>
+                <aside class="inventory-drawer-panel" role="dialog" aria-labelledby="inventory-drawer-title">
+                    <div class="inventory-drawer-header">
+                        <div>
+                            <h3 id="inventory-drawer-title" class="font-semibold text-base">Inventory</h3>
+                            <p class="text-[10px] opacity-60 mt-0.5">{{ vms|length }} VM(s) · scan and enable backup</p>
                         </div>
-
-                        <div class="flex items-center justify-between mb-4 mt-2">
-                            {% if vm.last_status == 'Success' %}
-                                <span class="status-badge status-success">Success</span>
-                            {% elif vm.last_status == 'Failed' %}
-                                <span class="status-badge status-error">Failed</span>
-                            {% else %}
-                                <span class="status-badge status-neutral">Idle</span>
-                            {% endif %}
-                            <div class="text-xs text-right" style="color: var(--text-muted)">
-                                <span class="block">Last Sync:</span>
-                                <span class="font-mono font-medium">{{ vm.last_backup.strftime('%Y-%m-%d %H:%M') if vm.last_backup else 'Never' }}</span>
-                            </div>
-                        </div>
-                        
-                        <div id="prog-wrap-{{ vm.id }}" class="mb-4 {% if vm.current_action %}block{% else %}hidden{% endif %}">
-                            <div class="flex justify-between text-xs mb-1">
-                                <span id="prog-text-{{ vm.id }}" class="font-medium truncate pr-2" style="color: var(--brand)">{{ vm.current_action or 'Initializing...' }}</span>
-                                <span id="prog-pct-{{ vm.id }}" class="font-mono font-medium" style="color: var(--text-main)">{{ vm.progress or '0' }}%</span>
-                            </div>
-                            <div id="prog-container-{{ vm.id }}" class="prog-container active">
-                                <div id="prog-bar-{{ vm.id }}" class="prog-bar" style="width: {{ vm.progress or 0 }}%"></div>
-                            </div>
-                        </div>
-
-                        <div class="mt-auto pt-4" style="border-top: 1px solid var(--border-color)">
-                            {% include 'partials/job_schedule_form_card.html' %}
-                        </div>
-
+                        <button type="button" class="inventory-drawer-close" onclick="closeInventoryDrawer()" aria-label="Close inventory">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
-                    {% endif %}
-                {% else %}
-                    <div class="col-span-full card p-10 text-center border-dashed font-medium" style="color: var(--text-muted)">
-                        No target VMs selected. Go to Inventory to select targets.
+                    <div class="inventory-drawer-body">
+                        {% include 'partials/backup_inventory_sidebar.html' %}
                     </div>
-                {% endfor %}
+                    <div class="inventory-drawer-footer">
+                        <span id="inventorySelectionCount" class="text-xs" style="color: var(--text-muted)">No changes</span>
+                        <div class="inventory-drawer-footer-actions">
+                            <button type="button" id="inventorySpreadBtn" onclick="spreadInventorySchedules()" class="btn-secondary px-3 py-1.5 text-xs font-medium">Spread schedules</button>
+                            <button type="button" onclick="resetInventorySelection()" class="btn-secondary px-3 py-1.5 text-xs font-medium">Reset</button>
+                            <button type="button" id="inventoryApplyBtn" onclick="applyInventorySelection()" class="btn-primary px-3 py-1.5 text-xs font-semibold" disabled>Add and close</button>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
         
-        <!-- SYSTEM LOGS TAB (NEW) -->
-        <div id="tab-syslogs" class="tab-content hidden h-[calc(100vh-10rem)] flex flex-col">
-            <h2 class="text-2xl font-bold mb-4">Diagnostics Console</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-                <!-- Service Log -->
-                <div class="flex flex-col h-full overflow-hidden">
-                    <div class="text-xs font-bold uppercase mb-2 flex justify-between items-center" style="color: var(--text-muted)">
-                        <span>Web Interface Log</span>
-                        <div class="flex items-center space-x-2">
-                             <input type="text" id="dev-search-service" placeholder="Search..." class="px-2 py-1 text-[10px] font-sans w-24 md:w-32 rounded">
-                             <select id="dev-lines-service" class="px-1 py-1 text-[10px] font-sans border-0 rounded">
-                                 <option value="100">100 Lines</option>
-                                 <option value="200">200 Lines</option>
-                                 <option value="300">300 Lines</option>
-                             </select>
-                            <span class="flex items-center text-[10px] text-green-500"><span class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>LIVE</span>
-                        </div>
-                    </div>
-                    <div id="term-service" class="terminal-window flex-1 p-3 text-xs whitespace-pre-wrap">Loading...</div>
-                </div>
-                <!-- Worker Log -->
-                <div class="flex flex-col h-full overflow-hidden">
-                    <div class="text-xs font-bold uppercase mb-2 flex justify-between items-center" style="color: var(--text-muted)">
-                        <span>Data Plane Worker</span>
-                        <div class="flex items-center space-x-2">
-                             <input type="text" id="dev-search-worker" placeholder="Search..." class="px-2 py-1 text-[10px] font-sans w-24 md:w-32 rounded">
-                             <select id="dev-lines-worker" class="px-1 py-1 text-[10px] font-sans border-0 rounded">
-                                 <option value="100">100 Lines</option>
-                                 <option value="200">200 Lines</option>
-                                 <option value="300">300 Lines</option>
-                             </select>
-                            <span class="flex items-center text-[10px] text-green-500"><span class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>LIVE</span>
-                        </div>
-                    </div>
-                    <div id="term-worker" class="terminal-window flex-1 p-3 text-xs whitespace-pre-wrap">Loading...</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- INVENTORY TAB -->
-        <div id="tab-inventory" class="tab-content hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">Datacenter Inventory</h2>
-                <form action="/fetch_vms" method="POST" class="flex space-x-3">
-                    <select name="esxi_host_id" required class="py-2 px-3 text-sm rounded">
-                        <option value="" disabled selected>Select Hypervisor...</option>
-                        {% for host in esxi_hosts %}
-                        <option value="{{ host.id }}">{{ host.name }} ({{ host.host_ip }}){% if host.connection_type == 'vcenter' %} · vCenter{% elif host.connection_type == 'standalone' %} · ESXi{% endif %}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn-primary px-4 py-2 text-sm font-medium">Scan</button>
-                </form>
-            </div>
-            
-            <div class="card overflow-hidden">
-                <table class="min-w-full text-left text-sm">
-                    <thead style="background-color: var(--bg-nav); border-bottom: 2px solid var(--border-color)">
-                        <tr>
-                            <th class="px-6 py-3 font-semibold w-16 text-center">Backup</th>
-                            <th class="px-6 py-3 font-semibold w-24 text-center">Status</th>
-                            <th class="px-6 py-3 font-semibold">Virtual Machine</th>
-                            <th class="px-6 py-3 font-semibold">Resources</th>
-                            <th class="px-6 py-3 font-semibold">Host Cluster</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y" style="border-color: var(--border-color)">
-                        {% for vm in vms %}
-                        <tr>
-                            <td class="px-6 py-3 text-center">
-                                <form action="/toggle_vm" method="POST">
-                                    <input type="hidden" name="vm_id" value="{{ vm.id }}">
-                                    <input type="checkbox" name="is_selected" value="True" onchange="this.form.submit()" {% if vm.is_selected %}checked{% endif %} 
-                                           class="w-4 h-4 rounded cursor-pointer">
-                                </form>
-                            </td>
-                            <td class="px-6 py-3 text-center">
-                                {% if vm.power_state == 'poweredOn' %}
-                                    <span class="status-badge status-success" title="Powered On">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>ON
-                                    </span>
-                                {% elif vm.power_state == 'poweredOff' %}
-                                    <span class="status-badge status-neutral" title="Powered Off">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span>OFF
-                                    </span>
-                                {% else %}
-                                    <span class="status-badge status-neutral" title="{{ vm.power_state }}">
-                                        {{ vm.power_state or '???' }}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-3 font-medium">{{ vm.vm_name }}</td>
-                            <td class="px-6 py-3 font-mono text-xs">
-                                <span class="opacity-80">{{ vm.cpu_count }} vCPU | {% if vm.memory_mb %}{{ vm.memory_mb // 1024 }}{% else %}0{% endif %}GB RAM | {{ vm.storage_gb }}GB</span>
-                            </td>
-                            <td class="px-6 py-3" style="color: var(--text-muted)">{{ vm.esxi_host.name }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="3" class="px-6 py-10 text-center font-medium" style="color: var(--text-muted)">No Inventory Data. Execute a Datacenter Scan.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         {% include 'partials/settings_tab.html' %}
 
         <!-- RESTORE TAB -->
         <div id="tab-restore" class="tab-content hidden">
-            <h2 class="text-2xl font-bold mb-6">Disaster Recovery</h2>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Restore Form -->
-                <div class="lg:col-span-1">
-                    <form action="/restore" method="POST" id="restoreForm" class="card p-6" data-confirm="Launch restore to the target host? Existing VMs with the same name may conflict if running." data-confirm-title="Launch restore">
-                        <div class="flex flex-col gap-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <h2 class="text-2xl font-bold">Restore</h2>
+                <button type="button" onclick="openRestoreDrawer()" class="btn-secondary px-3 py-2 text-sm font-semibold inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Deploy restore
+                </button>
+            </div>
 
-                            <!-- Step 1: Choose VM -->
-                            <div>
-                                <div class="flex justify-between items-center mb-1">
-                                    <span class="input-label">① Select VM to Restore</span>
-                                    <button type="button" onclick="loadGroupedBackups()" class="text-xs font-medium hover:underline" style="color: var(--brand)">Scan Repository</button>
-                                </div>
-                                <input type="text" id="vmSearchInput" placeholder="Search VMs..." oninput="filterVmList()" class="w-full py-2 px-3 text-sm mb-2 hidden" autocomplete="off">
-                                <div id="vmList" class="rounded overflow-hidden border text-sm" style="border-color: var(--border-color); max-height: 180px; overflow-y: auto;">
-                                    <div class="px-3 py-6 text-center text-xs opacity-50 italic">Click "Scan Repository" to load backups</div>
-                                </div>
-                            </div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                <h3 class="text-lg font-bold">Active restores</h3>
+            </div>
 
-                            <!-- Step 2: Choose Version -->
-                            <div id="versionSection" class="hidden">
-                                <span class="input-label">② Select Backup Version</span>
-                                <div id="versionList" class="grid grid-cols-1 gap-2 mt-1" style="max-height: 160px; overflow-y: auto;"></div>
-                                <input type="hidden" name="source_ova" id="selectedOvaPath" required>
-                                <p id="selectedVersionLabel" class="text-[10px] mt-1 font-mono truncate opacity-60"></p>
-                                <div id="chainSection" class="hidden mt-4 pt-3 border-t" style="border-color: var(--border-color)">
-                                    <span class="input-label">CBT backup chain</span>
-                                    <p class="text-[10px] opacity-50 mb-2">Full → incremental → synthetic timeline</p>
-                                    <div id="chainTimeline" class="rounded border px-3 py-2 text-xs" style="border-color: var(--border-color); max-height: 140px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
+            <div id="restoreTasksList" class="card overflow-x-auto">
+                <table class="jobs-table">
+                    <thead>
+                        <tr>
+                            <th>Virtual Machine</th>
+                            <th>Target Host</th>
+                            <th>Status</th>
+                            <th class="min-w-[180px]">Progress</th>
+                            <th>Started</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="restoreTasksBody">
+                        <tr id="restoreTasksEmpty"><td colspan="6" class="py-12 text-center" style="color: var(--text-muted)">
+                            <div class="text-sm font-medium mb-1">No active or recent restores</div>
+                            <div class="text-xs opacity-70 mb-3">Open Deploy restore to launch a VM from backup.</div>
+                            <button type="button" onclick="openRestoreDrawer()" class="btn-secondary px-3 py-1.5 text-xs font-semibold">Deploy restore</button>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-                            <!-- Step 3: Target Config -->
-                            <div>
-                                <span class="input-label">③ Target Hypervisor</span>
-                                <select name="target_esxi_id" id="esxiSelect" onchange="loadDatastores(this.value)" required class="w-full py-2.5 px-3 mt-1 text-sm">
-                                    <option value="" disabled selected>Select restoration target...</option>
-                                    {% for host in esxi_hosts %}
-                                    <option value="{{ host.id }}">{{ host.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div>
-                                <span class="input-label">Target Datastore</span>
-                                <select name="datastore" id="datastoreSelect" required class="w-full py-2.5 px-3 mt-1 text-sm">
-                                    <option value="" disabled selected>Select host first...</option>
-                                </select>
-                            </div>
-                            <div>
-                                <span class="input-label">New VM Name</span>
-                                <input type="text" name="target_name" id="restoreTargetName" placeholder="e.g. MyVM_Restored" required class="w-full py-2.5 px-3 mt-1 text-sm">
-                            </div>
-                            <button type="submit" class="btn-primary py-3 font-semibold mt-1">Deploy Image</button>
+            <div id="restore-drawer" class="inventory-drawer hidden" aria-hidden="true">
+                <div class="inventory-drawer-backdrop" onclick="closeRestoreDrawer()"></div>
+                <aside class="inventory-drawer-panel" role="dialog" aria-labelledby="restore-drawer-title">
+                    <div class="inventory-drawer-header">
+                        <div>
+                            <h3 id="restore-drawer-title" class="font-semibold text-base">Deploy restore</h3>
+                            <p id="restore-drawer-subtitle" class="text-[10px] opacity-60 mt-0.5">Select backup, target host, and deploy</p>
                         </div>
-                    </form>
-                </div>
-
-
-                <!-- Restore Tasks Monitor -->
-                <div class="lg:col-span-2">
-                    <div class="card p-6">
-                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Active Restores
-                        </h3>
-                        <div id="restoreTasksList" class="overflow-x-auto">
-                            <table class="jobs-table">
-                                <thead>
-                                    <tr>
-                                        <th>VM Name</th>
-                                        <th>Target Host</th>
-                                        <th>Status</th>
-                                        <th class="min-w-[180px]">Progress</th>
-                                        <th>Started</th>
-                                        <th class="text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="restoreTasksBody">
-                                    <tr><td colspan="6" class="py-8 text-center text-sm opacity-50 italic">No active or recent restore tasks.</td></tr>
-                                </tbody>
-                            </table>
+                        <button type="button" class="inventory-drawer-close" onclick="closeRestoreDrawer()" aria-label="Close deploy restore">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <div class="inventory-drawer-body">
+                        {% include 'partials/restore_drawer_panel.html' %}
+                    </div>
+                    <div class="inventory-drawer-footer">
+                        <span id="restoreSelectionLabel" class="text-xs" style="color: var(--text-muted)">No backup selected</span>
+                        <div class="inventory-drawer-footer-actions">
+                            <button type="button" onclick="closeRestoreDrawer()" class="btn-secondary px-3 py-1.5 text-xs font-medium">Cancel</button>
+                            <button type="submit" form="restoreForm" class="btn-primary px-3 py-1.5 text-xs font-semibold">Deploy and close</button>
                         </div>
                     </div>
-                </div>
+                </aside>
             </div>
-        </div>
         </div>
     </div>
 
@@ -2187,6 +2488,53 @@
         </div>
     </div>
 
+    <!-- Add ESXi / vCenter host -->
+    <div id="addHostModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="addHostModalTitle">
+        <div class="modal-backdrop" onclick="closeAddHostModal()"></div>
+        <div class="modal-panel card shadow-2xl" style="max-width: 32rem">
+            <div class="flex items-start justify-between gap-3 mb-1">
+                <h3 id="addHostModalTitle" class="text-lg font-semibold">Add ESXi / vCenter host</h3>
+                <button type="button" onclick="closeAddHostModal()" class="inventory-drawer-close" aria-label="Close">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-xs mb-4" style="color: var(--text-muted)">VMExec verifies the connection and detects standalone ESXi vs vCenter.</p>
+            <form id="addHostForm" onsubmit="submitAddHost(event)" class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="sm:col-span-2">
+                        <span class="input-label">Alias</span>
+                        <input type="text" id="add-host-name" name="name" placeholder="e.g. esxi-01 or vcenter-prod" required autocomplete="off" class="w-full py-2 px-3 text-sm mt-1">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <span class="input-label">IP or FQDN</span>
+                        <input type="text" id="add-host-ip" name="host_ip" placeholder="10.0.0.50 or vcenter.local" required autocomplete="off" class="w-full py-2 px-3 text-sm mt-1">
+                    </div>
+                    <div>
+                        <span class="input-label">Username</span>
+                        <input type="text" id="add-host-user" name="username" required autocomplete="username" class="w-full py-2 px-3 text-sm mt-1">
+                    </div>
+                    <div>
+                        <span class="input-label">Password</span>
+                        <input type="password" id="add-host-pass" name="password" required autocomplete="new-password" class="w-full py-2 px-3 text-sm mt-1">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <span class="input-label">Connection type</span>
+                        <select id="add-host-type" name="connection_type" class="w-full py-2 px-3 text-sm mt-1">
+                            <option value="auto">Auto-detect (recommended)</option>
+                            <option value="standalone">Standalone ESXi</option>
+                            <option value="vcenter">vCenter Server</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="addHostError" class="hidden text-xs px-3 py-2 rounded" style="background: rgba(239,68,68,0.12); color: #f87171"></p>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddHostModal()" class="btn-secondary px-4 py-2 text-sm font-medium">Cancel</button>
+                    <button type="submit" id="addHostSubmitBtn" class="btn-primary px-4 py-2 text-sm font-semibold">Add host</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {% include 'partials/setup_wizard.html' %}
 
     <!-- Polling Logic -->
@@ -2222,8 +2570,7 @@
 
     async function removeVmFromTasks(vmId, vmName, skipConfirm = false) {
         const row = document.getElementById('row-' + vmId);
-        const card = document.getElementById('card-' + vmId);
-        const isRunning = row?.getAttribute('data-running') === 'true' || card?.getAttribute('data-running') === 'true';
+        const isRunning = row?.getAttribute('data-running') === 'true';
         if (!skipConfirm) {
             const msg = isRunning
                 ? `${vmName} has a backup running. Remove from tasks anyway? It will no longer appear here or run on schedule.`
@@ -2241,19 +2588,21 @@
             if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
 
             document.getElementById('row-' + vmId)?.remove();
-            document.getElementById('card-' + vmId)?.remove();
 
-            const invHidden = document.querySelector(`#tab-inventory input[type="hidden"][name="vm_id"][value="${vmId}"]`);
-            const invCheckbox = invHidden?.closest('form')?.querySelector('input[name="is_selected"]');
-            if (invCheckbox) invCheckbox.checked = false;
+            const invCb = document.querySelector(`#backup-inventory-panel .inventory-vm-cb[data-vm-id="${vmId}"]`);
+            if (invCb) {
+                invCb.checked = false;
+                invCb.dataset.initial = '0';
+                if (typeof updateInventorySelectionCount === 'function') updateInventorySelectionCount();
+            }
 
             const tbody = document.querySelector('#jobsListView tbody');
             if (tbody && !tbody.querySelector('.vm-job-row')) {
-                tbody.innerHTML = '<tr><td colspan="8" class="py-10 text-center" style="color: var(--text-muted)">No target VMs selected. Go to Inventory to select targets.</td></tr>';
-            }
-            const grid = document.getElementById('jobsGridView');
-            if (grid && !grid.querySelector('.vm-job-card')) {
-                grid.innerHTML = '<div class="col-span-full card p-10 text-center border-dashed font-medium" style="color: var(--text-muted)">No target VMs selected. Go to Inventory to select targets.</div>';
+                tbody.innerHTML = `<tr id="jobsListEmpty"><td colspan="8" class="py-12 text-center" style="color: var(--text-muted)">
+                    <div class="text-sm font-medium mb-1">No backup tasks configured</div>
+                    <div class="text-xs opacity-70 mb-3">Select VMs in Inventory, then click Add and close.</div>
+                    <button type="button" onclick="openInventoryDrawer()" class="btn-secondary px-3 py-1.5 text-xs font-semibold">Open Inventory</button>
+                </td></tr>`;
             }
             if (typeof filterJobs === 'function') filterJobs();
             if (typeof updateJobsBulkBar === 'function') updateJobsBulkBar();
@@ -2333,7 +2682,7 @@
                     <td class="py-3 text-xs" style="color: var(--text-muted)">${formatApiKeyDate(k.created_at)}</td>
                     <td class="py-3 text-xs" style="color: var(--text-muted)">${formatApiKeyDate(k.last_used_at)}</td>
                     <td class="py-3 text-right">
-                        <button type="button" onclick="revokeApiKey(${k.id}, ${JSON.stringify(k.name)})" class="text-xs text-red-400 hover:text-red-300 font-medium">Revoke</button>
+                        <button type="button" class="api-key-revoke-btn text-xs text-red-400 hover:text-red-300 font-medium" data-key-id="${k.id}" data-key-name="${escapeHtml(k.name)}">Revoke</button>
                     </td>
                 </tr>
             `).join('');
@@ -2397,6 +2746,7 @@
         const target = document.getElementById('fields-' + type);
         if (target) target.classList.remove('hidden');
         syncSettingsCbtUi();
+        syncSettingsEngineUi();
     }
 
     function toggleSecondaryStorageFields() {
@@ -2406,6 +2756,42 @@
         document.querySelectorAll('.secondary-storage-fields').forEach(el => el.classList.add('hidden'));
         const target = document.getElementById('secondary-fields-' + type);
         if (target) target.classList.remove('hidden');
+    }
+
+    function syncSecondaryStorageUi() {
+        const enabled = document.getElementById('settings-secondary-copy-enabled')?.checked;
+        const wrap = document.getElementById('settings-secondary-fields');
+        if (!wrap) return;
+        wrap.classList.toggle('opacity-50', !enabled);
+        wrap.classList.toggle('pointer-events-none', !enabled);
+    }
+
+    function syncSettingsEngineUi() {
+        const transport = document.getElementById('settings-backup-transport')?.value || 'nbd';
+        const isNbd = transport === 'nbd';
+        const isLegacy = transport === 'legacy';
+        const retentionMode = document.getElementById('settings-retention-mode')?.value || 'count';
+        const isGfs = retentionMode === 'gfs';
+
+        document.getElementById('engine-field-vddk')?.classList.toggle('hidden', !isNbd);
+        document.getElementById('engine-legacy-fields')?.classList.toggle('hidden', !isLegacy);
+        document.querySelectorAll('.engine-field-gfs').forEach(el => el.classList.toggle('hidden', !isGfs));
+        document.getElementById('engine-retention-count-note')?.classList.toggle('hidden', isGfs);
+    }
+
+    function syncSettingsToggleLabels() {
+        const cbt = document.getElementById('settings-cbt-enabled');
+        const cbtLabel = document.getElementById('settings-cbt-toggle-label');
+        if (cbt && cbtLabel) cbtLabel.textContent = cbt.checked ? 'On' : 'Off';
+        const infra = document.getElementById('settings-exclude-infra-vms');
+        const infraLabel = document.getElementById('settings-infra-toggle-label');
+        if (infra && infraLabel) infraLabel.textContent = infra.checked ? 'On' : 'Off';
+    }
+
+    function initSettingsEngineToggles() {
+        document.getElementById('settings-cbt-enabled')?.addEventListener('change', syncSettingsToggleLabels);
+        document.getElementById('settings-exclude-infra-vms')?.addEventListener('change', syncSettingsToggleLabels);
+        syncSettingsToggleLabels();
     }
 
     function syncSettingsCbtUi() {
@@ -2418,6 +2804,7 @@
             cb.disabled = isS3;
             if (isS3) cb.checked = false;
         }
+        syncSettingsToggleLabels();
     }
 
     function syncWizardCbtUi() {
@@ -2636,38 +3023,46 @@
     // ─── Hierarchical Backup Picker ──────────────────────────────────────────
     let _allGroupedBackups = [];
 
+    function updateRestoreSelectionLabel(text) {
+        const el = document.getElementById('restoreSelectionLabel');
+        if (el) el.textContent = text || 'No backup selected';
+    }
+
     async function loadGroupedBackups() {
         const vmList = document.getElementById('vmList');
         const searchInput = document.getElementById('vmSearchInput');
-        vmList.innerHTML = '<div class="px-3 py-4 text-center text-xs opacity-50 italic">Scanning repository...</div>';
+        const subtitle = document.getElementById('restore-drawer-subtitle');
+        vmList.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs opacity-50 italic">Scanning repository…</td></tr>';
         try {
             const res = await fetch('/api/backups_grouped');
             const data = await res.json();
             if (data.error) {
-                vmList.innerHTML = `<div class="px-3 py-4 text-center text-xs text-red-400">${data.error}</div>`;
+                vmList.innerHTML = `<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-red-400">${escapeHtml(data.error)}</td></tr>`;
                 return;
             }
             _allGroupedBackups = data;
+            if (subtitle) subtitle.textContent = `${data.length} VM(s) · select backup and target`;
             searchInput.classList.remove('hidden');
             renderVmList(data);
         } catch(e) {
-            vmList.innerHTML = '<div class="px-3 py-4 text-center text-xs text-red-400">Scan failed</div>';
+            vmList.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-red-400">Scan failed</td></tr>';
         }
     }
 
     function renderVmList(groups) {
         const vmList = document.getElementById('vmList');
         if (!groups || groups.length === 0) {
-            vmList.innerHTML = '<div class="px-3 py-4 text-center text-xs opacity-50 italic">Repository is empty</div>';
+            vmList.innerHTML = '<tr><td colspan="3" class="px-3 py-8 text-center font-medium text-xs" style="color: var(--text-muted)">Repository is empty</td></tr>';
             return;
         }
         vmList.innerHTML = groups.map(g => `
-            <div onclick="selectVm('${encodeURIComponent(JSON.stringify(g))}')"
-                 class="px-3 py-2.5 cursor-pointer flex justify-between items-center transition-colors hover:bg-blue-500/10 border-b"
-                 style="border-color: var(--border-color)">
-                <div class="font-medium text-sm truncate pr-2">${g.vm_name}</div>
-                <span class="text-[10px] font-mono shrink-0 opacity-60 bg-black/20 px-1.5 py-0.5 rounded">${g.versions.length} ver</span>
-            </div>`).join('');
+            <tr class="restore-vm-row" onclick="selectVm('${encodeURIComponent(JSON.stringify(g))}')">
+                <td class="px-3 py-2 text-center"><span class="restore-row-dot"></span></td>
+                <td class="px-3 py-2">
+                    <div class="font-medium truncate max-w-[240px]" title="${escapeHtml(g.vm_name)}">${escapeHtml(g.vm_name)}</div>
+                </td>
+                <td class="px-3 py-2 text-center text-[10px] font-mono opacity-60">${g.versions.length}</td>
+            </tr>`).join('');
     }
 
     function filterVmList() {
@@ -2678,41 +3073,32 @@
 
     function selectVm(encodedGroup) {
         const group = JSON.parse(decodeURIComponent(encodedGroup));
-        // Highlight selected VM
-        document.querySelectorAll('#vmList > div').forEach(el => {
-            el.classList.remove('bg-blue-500/20');
-            if (el.querySelector('.font-medium')?.textContent === group.vm_name)
-                el.classList.add('bg-blue-500/20');
+        document.querySelectorAll('.restore-vm-row').forEach(el => {
+            el.classList.toggle('selected', el.querySelector('.font-medium')?.textContent === group.vm_name);
         });
 
-        // Auto-fill VM name field
         const nameInput = document.getElementById('restoreTargetName');
         if (nameInput && !nameInput.value) nameInput.value = group.vm_name + '_Restored';
 
-        // Show version cards
         const versionSection = document.getElementById('versionSection');
         const versionList = document.getElementById('versionList');
         versionSection.classList.remove('hidden');
+        updateRestoreSelectionLabel(`${group.vm_name} — pick a version`);
 
-        versionList.innerHTML = group.versions.map((v, idx) => `
-            <button type="button" onclick="selectVersion('${v.path.replace(/\\/g, '\\\\').replace(/'/g,"\\'")}', '${v.date}', '${v.size}', '${v.point_type || 'full'}')"
-                    id="vcard-${idx}"
-                    class="version-card w-full text-left rounded border px-3 py-2 transition-all hover:border-blue-500 hover:bg-blue-500/10"
-                    style="border-color: var(--border-color)">
-                <div class="flex justify-between items-center gap-2">
-                    <div class="font-mono font-semibold text-xs truncate" style="color: var(--brand)">${v.date}</div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        ${backupPointTypeBadge(v.point_type || (v.backup_type === 'legacy' ? 'legacy' : 'full'))}
-                        <div class="text-[10px] opacity-60 font-mono">${v.size}</div>
-                    </div>
-                </div>
-            </button>`).join('');
+        versionList.innerHTML = group.versions.map((v, idx) => {
+            const pathEsc = v.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const pt = v.point_type || (v.backup_type === 'legacy' ? 'legacy' : 'full');
+            return `<tr class="restore-version-row" id="vrow-${idx}" onclick="selectVersion('${pathEsc}', '${v.date}', '${v.size}', '${pt}', ${idx}, event)">
+                <td class="px-3 py-2 text-center"><span class="restore-row-dot"></span></td>
+                <td class="px-3 py-2 font-mono font-medium">${escapeHtml(v.date)}</td>
+                <td class="px-3 py-2 text-center">${backupPointTypeBadge(pt)}</td>
+                <td class="px-3 py-2 text-right font-mono text-[10px] opacity-60">${escapeHtml(v.size)}</td>
+            </tr>`;
+        }).join('');
 
-        // Auto-select latest (first) version
         if (group.versions.length > 0) {
             const v0 = group.versions[0];
-            selectVersion(v0.path, v0.date, v0.size, v0.point_type || 'full');
-            document.getElementById('vcard-0')?.classList.add('border-blue-500', 'bg-blue-500/10');
+            selectVersion(v0.path, v0.date, v0.size, v0.point_type || 'full', 0);
         }
         loadChainViewer(group.vm_name);
     }
@@ -2756,15 +3142,15 @@
         }
     }
 
-    function selectVersion(path, date, size, pointType) {
+    function selectVersion(path, date, size, pointType, idx, evt) {
+        if (evt) evt.stopPropagation();
         document.getElementById('selectedOvaPath').value = path;
         const typeLabel = (pointType || 'full').replace('_', ' ');
-        document.getElementById('selectedVersionLabel').textContent = `${date}  •  ${typeLabel}  •  ${size}  •  ${path}`;
-        // Highlight selected card
-        document.querySelectorAll('.version-card').forEach(el => {
-            el.classList.remove('border-blue-500', 'bg-blue-500/10');
-        });
-        event?.target?.closest('.version-card')?.classList.add('border-blue-500', 'bg-blue-500/10');
+        updateRestoreSelectionLabel(`${date} · ${typeLabel} · ${size}`);
+        document.querySelectorAll('.restore-version-row').forEach(el => el.classList.remove('selected'));
+        if (typeof idx === 'number') {
+            document.getElementById(`vrow-${idx}`)?.classList.add('selected');
+        }
     }
 
     // Legacy flat loader (kept for compatibility)
@@ -2804,7 +3190,9 @@
             }
 
             // System Logs Polling
-            if(document.getElementById('tab-syslogs').classList.contains('hidden') === false) {
+            const settingsTab = document.getElementById('tab-settings');
+            const syslogsPanel = document.getElementById('settings-panel-syslogs');
+            if (settingsTab && !settingsTab.classList.contains('hidden') && syslogsPanel && !syslogsPanel.classList.contains('hidden')) {
                 const sLines = document.getElementById('dev-lines-service').value || 100;
                 const sSearch = encodeURIComponent(document.getElementById('dev-search-service').value || "");
                 const wLines = document.getElementById('dev-lines-worker').value || 100;
@@ -2833,7 +3221,11 @@
                 const tbody = document.getElementById('restoreTasksBody');
                 if (!tbody) return;
                 if (restores.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-sm opacity-50 italic">No active or recent restore tasks.</td></tr>';
+                    tbody.innerHTML = `<tr id="restoreTasksEmpty"><td colspan="6" class="py-12 text-center" style="color: var(--text-muted)">
+                        <div class="text-sm font-medium mb-1">No active or recent restores</div>
+                        <div class="text-xs opacity-70 mb-3">Open Deploy restore to launch a VM from backup.</div>
+                        <button type="button" onclick="openRestoreDrawer()" class="btn-secondary px-3 py-1.5 text-xs font-semibold">Deploy restore</button>
+                    </td></tr>`;
                 } else {
                     tbody.innerHTML = restores.map(r => {
                         const statusClass = r.status === 'Success' ? 'status-success'
@@ -3011,7 +3403,7 @@
         if (backBtn) backBtn.classList.toggle('hidden', step <= 1 || step >= WIZARD_TOTAL_STEPS);
         if (nextBtn) {
             nextBtn.classList.remove('hidden');
-            nextBtn.textContent = step === 4 ? 'Apply & Finish' : (step === WIZARD_TOTAL_STEPS ? 'Go to Tasks' : 'Continue');
+            nextBtn.textContent = step === 4 ? 'Apply & Finish' : (step === WIZARD_TOTAL_STEPS ? 'Go to Backup' : 'Continue');
         }
         if (step === 4) {
             wizardShowDaysRow();

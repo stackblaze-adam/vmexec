@@ -110,8 +110,20 @@ def get_server_thumbprint(host, port=443):
     return thumbprint
 
 
-def _stream_disk_via_nbdcopy(cmd_prefix, dest_path, timeout_secs=7200):
+def _stream_disk_via_nbdcopy(
+    cmd_prefix,
+    dest_path,
+    timeout_secs=7200,
+    capacity_bytes=None,
+    progress_callback=None,
+    progress_base=0,
+    progress_total=100,
+    speed_callback=None,
+    is_cancelled_func=None,
+):
     """Run nbdkit with nbdcopy to write a flat disk image to dest_path."""
+    import time
+
     nbdcopy = shutil.which("nbdcopy")
     if not nbdcopy:
         raise VddkNotAvailableError("nbdcopy not found in PATH (install libnbd-bin)")
@@ -119,15 +131,47 @@ def _stream_disk_via_nbdcopy(cmd_prefix, dest_path, timeout_secs=7200):
     os.makedirs(os.path.dirname(dest_path) or ".", exist_ok=True)
     run_cmd = cmd_prefix + ["--run", f'{nbdcopy} "$uri" "{dest_path}"']
     log_info(f"[NBD] Streaming disk → {dest_path}")
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         run_cmd,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        timeout=timeout_secs,
     )
+    start = time.time()
+    last_size = 0
+    last_speed_t = start
+    try:
+        while proc.poll() is None:
+            if is_cancelled_func and is_cancelled_func():
+                proc.kill()
+                proc.wait(timeout=30)
+                raise RuntimeError("Backup cancelled by user")
+            if time.time() - start > timeout_secs:
+                proc.kill()
+                proc.wait(timeout=30)
+                raise RuntimeError(f"nbdcopy timed out after {timeout_secs}s")
+            time.sleep(1.5)
+            if not os.path.isfile(dest_path):
+                continue
+            size = os.path.getsize(dest_path)
+            now = time.time()
+            dt = now - last_speed_t
+            if dt >= 1.5 and speed_callback and size >= last_size:
+                mbps = (size - last_size) / dt / (1024 * 1024)
+                if mbps >= 0:
+                    speed_callback(round(mbps, 1))
+                last_size = size
+                last_speed_t = now
+            if capacity_bytes and capacity_bytes > 0 and progress_callback:
+                pct = progress_base + int((size / capacity_bytes) * progress_total)
+                progress_callback(min(pct, progress_base + max(progress_total - 1, 0)))
+    finally:
+        stdout, stderr = proc.communicate()
     if proc.returncode != 0:
-        stderr = (proc.stderr or proc.stdout or "").strip()[:2000]
-        raise RuntimeError(f"nbdcopy failed (exit {proc.returncode}): {stderr}")
+        err = (stderr or stdout or "").strip()[:2000]
+        raise RuntimeError(f"nbdcopy failed (exit {proc.returncode}): {err}")
+    if progress_callback:
+        progress_callback(min(progress_base + progress_total, 99))
     return os.path.getsize(dest_path) if os.path.isfile(dest_path) else 0
 
 
@@ -211,7 +255,17 @@ def stream_snapshot_disk(
             try:
                 if progress_callback:
                     progress_callback(progress_base)
-                nbytes = _stream_disk_via_nbdcopy(cmd, dest_path)
+                capacity = disk.get("capacity_bytes") if isinstance(disk, dict) else None
+                nbytes = _stream_disk_via_nbdcopy(
+                    cmd,
+                    dest_path,
+                    capacity_bytes=capacity,
+                    progress_callback=progress_callback,
+                    progress_base=progress_base,
+                    progress_total=progress_total,
+                    speed_callback=speed_callback,
+                    is_cancelled_func=is_cancelled_func,
+                )
                 if progress_callback:
                     progress_callback(min(progress_base + progress_total, 99))
                 return nbytes

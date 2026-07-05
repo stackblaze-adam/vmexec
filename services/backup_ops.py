@@ -40,6 +40,7 @@ def config_to_dict(config):
         "backup_timeout_mins": config.backup_timeout_mins,
         "max_global_backups": config.max_global_backups,
         "max_backups_per_host": config.max_backups_per_host,
+        "max_schedules_per_hour": getattr(config, "max_schedules_per_hour", 2) or 2,
         "datastore_min_free_pct": config.datastore_min_free_pct,
         "datastore_headroom_gb": config.datastore_headroom_gb,
         "datastore_est_multiplier": config.datastore_est_multiplier,
@@ -106,6 +107,8 @@ def update_storage_config(db, data):
         config.max_global_backups = data["max_global_backups"]
     if "max_backups_per_host" in data and data["max_backups_per_host"] is not None:
         config.max_backups_per_host = data["max_backups_per_host"]
+    if "max_schedules_per_hour" in data and data["max_schedules_per_hour"] is not None:
+        config.max_schedules_per_hour = max(1, min(12, int(data["max_schedules_per_hour"])))
     if "datastore_min_free_pct" in data and data["datastore_min_free_pct"] is not None:
         config.datastore_min_free_pct = data["datastore_min_free_pct"]
     if "datastore_headroom_gb" in data and data["datastore_headroom_gb"] is not None:
@@ -365,6 +368,8 @@ def vm_to_dict(vm):
         "power_state": vm.power_state,
         "power_off_for_backup": vm.power_off_for_backup,
         "cbt_enabled": getattr(vm, "cbt_enabled", True),
+        "host_name": vm.esxi_host.name if vm.esxi_host else "",
+        "last_secondary_copy_status": getattr(vm, "last_secondary_copy_status", None) or "none",
     }
 
 
@@ -386,6 +391,46 @@ def update_vm_job(db, vm_id, data):
     db.commit()
     db.refresh(vm)
     return vm
+
+
+def stagger_selected_vm_schedules(db, base_hour=2, base_minute=0):
+    """Spread selected VM daily schedules so at most N jobs share the same hour."""
+    config = get_or_create_config(db)
+    max_per_hour = max(1, min(12, int(getattr(config, "max_schedules_per_hour", None) or 2)))
+    interval = max(1, 60 // max_per_hour)
+    vms = db.query(VM).filter(VM.is_selected == True).order_by(VM.vm_name).all()
+    for i, vm in enumerate(vms):
+        total_min = base_minute + i * interval
+        vm.schedule_hour = (base_hour + total_min // 60) % 24
+        vm.schedule_minute = total_min % 60
+
+
+def apply_inventory_selections(db, updates, restagger=False):
+    """Apply inventory checkbox changes; spread schedules across the day."""
+    newly_enabled = False
+    for item in updates or []:
+        vm_id = int(item["vm_id"])
+        is_selected = bool(item["is_selected"])
+        vm = db.query(VM).filter(VM.id == vm_id).first()
+        if not vm:
+            continue
+        was_selected = bool(vm.is_selected)
+        vm.is_selected = is_selected
+        if is_selected:
+            vm.is_job_active = True
+            if not was_selected:
+                newly_enabled = True
+        else:
+            vm.is_job_active = False
+
+    selected_count = db.query(VM).filter(VM.is_selected == True).count()
+    staggered = False
+    if selected_count > 0 and (restagger or newly_enabled or len(updates or []) > 0):
+        stagger_selected_vm_schedules(db)
+        staggered = True
+
+    db.commit()
+    return {"ok": True, "staggered": staggered, "selected_count": selected_count}
 
 
 def is_scheduler_paused(db):
@@ -483,6 +528,9 @@ def job_progress(db):
             "progress": vm.progress or 0,
             "current_action": vm.current_action or "",
             "speed_mbps": round(getattr(vm, "speed_mbps", 0) or 0, 1),
+            "secondary_copy_status": getattr(vm, "last_secondary_copy_status", None) or "none",
+            "last_status": vm.last_status or "Never",
+            "last_backup_ts": vm.last_backup.timestamp() if vm.last_backup else 0,
         }
         for vm in vms
     }

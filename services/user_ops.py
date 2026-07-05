@@ -19,6 +19,7 @@ def user_to_dict(user):
         "role": user.role or "admin",
         "email": user.email or "",
         "is_mfa_enabled": bool(user.is_mfa_enabled),
+        "notify_subscriptions": user.notify_subscriptions or "",
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 

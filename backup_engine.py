@@ -412,11 +412,16 @@ def _get_datastore_summary(si, ds_name):
     return None
 
 
+def matches_infra_vm_pattern(vm_name):
+    """Return True if VM name matches built-in infrastructure patterns."""
+    return any(p.search(vm_name or "") for p in INFRA_VM_PATTERNS)
+
+
 def _is_infra_vm(vm_name, config):
     """Return True if VM matches built-in infrastructure patterns and exclusion is enabled."""
     if config is None or not getattr(config, "exclude_infra_vms", True):
         return False
-    return any(p.search(vm_name or "") for p in INFRA_VM_PATTERNS)
+    return matches_infra_vm_pattern(vm_name)
 
 
 def _effective_datastore_multiplier(config, power_state):

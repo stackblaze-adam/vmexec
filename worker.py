@@ -523,10 +523,12 @@ def perform_backup(vm_id: int):
             raise BackupCancelled(result_msg)
 
         vm.progress = 100 if success else 0
-        vm.current_action = ""
         vm.speed_mbps = 0.0
         vm.last_backup = datetime.datetime.now()
         vm.last_status = "Success" if success else "Failed"
+        if not success:
+            vm.current_action = ""
+            vm.last_secondary_copy_status = "none"
         backup_end_time = datetime.datetime.now()
         duration_s = int((backup_end_time - backup_start_time).total_seconds())
         duration_str = f"{duration_s // 60}m {duration_s % 60}s"
@@ -547,15 +549,24 @@ def perform_backup(vm_id: int):
                 compress_legacy_backup_dir(storage, dest_rel_dir, config)
             except Exception as comp_err:
                 log_warn(f"[COMPRESS] Legacy compression error: {comp_err}")
-            try:
-                from secondary_copy import sync_after_backup
-                copy_ok, copy_msg = sync_after_backup(config, storage, dest_rel_dir)
-                if copy_ok and getattr(config, "secondary_copy_enabled", False):
-                    log_info(f"[COPY] {copy_msg}")
-                elif not copy_ok and getattr(config, "secondary_copy_enabled", False):
-                    log_warn(f"[COPY] Secondary copy failed: {copy_msg}")
-            except Exception as copy_err:
-                log_warn(f"[COPY] Secondary copy error: {copy_err}")
+            if getattr(config, "secondary_copy_enabled", False):
+                vm.current_action = "Secondary copy..."
+                vm.last_secondary_copy_status = "copying"
+                db.commit()
+                try:
+                    from secondary_copy import sync_after_backup
+                    copy_ok, copy_msg = sync_after_backup(config, storage, dest_rel_dir)
+                    vm.last_secondary_copy_status = "ok" if copy_ok else "failed"
+                    if copy_ok:
+                        log_info(f"[COPY] {copy_msg}")
+                    else:
+                        log_warn(f"[COPY] Secondary copy failed: {copy_msg}")
+                except Exception as copy_err:
+                    vm.last_secondary_copy_status = "failed"
+                    log_warn(f"[COPY] Secondary copy error: {copy_err}")
+            else:
+                vm.last_secondary_copy_status = "skipped"
+            vm.current_action = ""
             rich_body = (
                 f"Backup Report — {vm.vm_name}\n"
                 f"{'=' * 50}\n"
@@ -599,6 +610,7 @@ def perform_backup(vm_id: int):
         vm.current_action = ""
         vm.speed_mbps = 0.0
         vm.last_status = "Cancelled"
+        vm.last_secondary_copy_status = "none"
         db.commit()
     except BackupSkipped as e:
         log_info(f"[PID {pid}] Backup skipped for {vm.vm_name}: {e}")
@@ -607,6 +619,7 @@ def perform_backup(vm_id: int):
         vm.current_action = ""
         vm.speed_mbps = 0.0
         vm.last_status = "Skipped"
+        vm.last_secondary_copy_status = "none"
         db.commit()
     except Exception as e:
         log_error(f"[PID {pid}] Error during backup of {vm.vm_name}: {e}")
@@ -614,6 +627,7 @@ def perform_backup(vm_id: int):
         vm.progress = 0
         vm.current_action = ""
         vm.last_status = "Failed"
+        vm.last_secondary_copy_status = "none"
         db.commit()
         send_event_notification(
             "backup_failure",

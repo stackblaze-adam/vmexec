@@ -17,6 +17,33 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class SessionLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class SessionLoginResponse(BaseModel):
+    status: str  # ok | mfa_required | mfa_setup_required
+    username: Optional[str] = None
+    qr_code: Optional[str] = None
+    secret: Optional[str] = None
+    message: Optional[str] = None
+
+
+class SessionMfaRequest(BaseModel):
+    mfa_code: str
+
+
+class MfaSetupRequest(BaseModel):
+    secret: str
+    mfa_code: str
+
+
+class MfaSetupStartResponse(BaseModel):
+    qr_code: str
+    secret: str
+
+
 class ApiKeyCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)
     username: Optional[str] = None
@@ -54,6 +81,7 @@ class StorageConfigUpdate(BaseModel):
     backup_timeout_mins: Optional[int] = None
     max_global_backups: Optional[int] = None
     max_backups_per_host: Optional[int] = None
+    max_schedules_per_hour: Optional[int] = None
     datastore_min_free_pct: Optional[int] = None
     datastore_headroom_gb: Optional[int] = None
     datastore_est_multiplier: Optional[float] = None
@@ -93,6 +121,7 @@ class ConfigResponse(BaseModel):
     backup_timeout_mins: int
     max_global_backups: int
     max_backups_per_host: int
+    max_schedules_per_hour: int = 2
     datastore_min_free_pct: int
     datastore_headroom_gb: int
     datastore_est_multiplier: float
@@ -142,6 +171,7 @@ class ConfigUpdate(BaseModel):
     backup_timeout_mins: Optional[int] = None
     max_global_backups: Optional[int] = None
     max_backups_per_host: Optional[int] = None
+    max_schedules_per_hour: Optional[int] = None
     datastore_min_free_pct: Optional[int] = None
     datastore_headroom_gb: Optional[int] = None
     datastore_est_multiplier: Optional[float] = None
@@ -201,6 +231,16 @@ class VmUpdate(BaseModel):
     schedule_days: Optional[str] = None
 
 
+class InventorySelectionItem(BaseModel):
+    vm_id: int
+    is_selected: bool
+
+
+class InventoryApplyRequest(BaseModel):
+    updates: List[InventorySelectionItem] = []
+    restagger: bool = False
+
+
 class VmResponse(BaseModel):
     id: int
     vm_name: str
@@ -222,6 +262,8 @@ class VmResponse(BaseModel):
     power_state: str
     power_off_for_backup: bool
     cbt_enabled: bool = True
+    host_name: str = ""
+    last_secondary_copy_status: str = "none"
 
 
 class SyncResult(BaseModel):
@@ -235,6 +277,7 @@ class UserResponse(BaseModel):
     role: str
     email: str
     is_mfa_enabled: bool
+    notify_subscriptions: str = ""
     created_at: Optional[str] = None
 
 
@@ -262,6 +305,12 @@ class PasswordResetResponse(BaseModel):
 class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     notify_subscriptions: Optional[str] = None
+
+
+class BootstrapResponse(BaseModel):
+    user: UserResponse
+    setup_wizard_suggested: bool
+    notify_events: List[tuple]
 
 
 class BackupLogEntry(BaseModel):

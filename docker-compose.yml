@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  # ─── Web UI ───────────────────────────────────────────────────────────────
+  web:
+    build: .
+    container_name: novabak_web
+    restart: unless-stopped
+    ports:
+      - "443:8000"   # HTTPS
+      - "8000:8000"  # Direct access (also HTTPS)
+    volumes:
+      # Persistent data: SQLite DB + logs
+      - novabak_data:/app/data
+      - /mnt/backups:/mnt/backups
+      - /opt/NovaBak/vendor/vddk:/app/vendor/vddk:ro
+    environment:
+      - DATA_DIR=/app/data
+      - LOG_FILE=service.log
+    command: python -u main.py
+
+  # ─── Background Worker Daemon ─────────────────────────────────────────────
+  worker:
+    build: .
+    container_name: novabak_worker
+    restart: unless-stopped
+    depends_on:
+      - web
+    volumes:
+      # Same data volume — shared DB between web and worker
+      - novabak_data:/app/data
+      - /mnt/backups:/mnt/backups
+      # VDDK tarball + extracted lib (see services/vddk_install.py)
+      - /opt/NovaBak/vendor/vddk:/app/vendor/vddk:ro
+    environment:
+      - DATA_DIR=/app/data
+      - LOG_FILE=worker.log
+    command: python -u worker_daemon.py
+
+volumes:
+  novabak_data:
+    driver: local
+

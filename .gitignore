@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Data directory — contains DB with credentials, logs, etc.
+data/
+
+# Compiled distribution / release zips
+*.zip
+# VDDK tarballs are proprietary — keep in vendor/vddk/ on the server only
+vendor/vddk/*.tar.gz
+
+# IDE / OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Lock files
+daemon.lock
+app.lock
+
+# Test scripts
+/tmp/
+test.txt
+
+# Generated / legacy logo assets (keep vmexec-logo.svg only)
+static/new logo.png
+static/novabak_logo.png
+static/vmexec_logo.png
+static/vmexec_logo_sm.png
+static/vmexec_icon.png
+static/vmexec_icon_128.png

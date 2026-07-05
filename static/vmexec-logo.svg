@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="VMExec">
+  <rect width="32" height="32" rx="9" fill="#F97316"/>
+  <path fill="#FFFFFF" d="M6.75 9.25h2.35L12.05 20.1 14.95 9.25h2.35l-3.95 14.5h-2.55L6.75 9.25z"/>
+  <path fill="#FFFFFF" d="M16.85 9.25h2.15l2.35 8.05 2.35-8.05h2.15v14.5h-2.05v-8.85l-2.45 8.85h-1.35l-2.45-8.85v8.85h-2.05V9.25z"/>
+</svg>

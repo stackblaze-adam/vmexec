@@ -1,7 +1,3 @@
-<p align="center">
-  <strong style="font-size:2rem"><span style="color:#F97316">VM</span><span style="color:#111827">Exec</span></strong>
-</p>
-
 <h1 align="center">VMExec</h1>
 <p align="center"><strong>Enterprise-grade VM backup & disaster recovery for VMware ESXi</strong></p>
 <p align="center">Built by <a href="https://github.com/stackblaze-adam">Adam Kamali</a> · Sponsored by <a href="https://stackblaze.com">Stackblaze.com</a></p>

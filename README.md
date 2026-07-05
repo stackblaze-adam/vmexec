@@ -1,6 +1,6 @@
 <h1 align="center">VMExec</h1>
 <p align="center"><strong>Enterprise-grade VM backup & disaster recovery for VMware ESXi</strong></p>
-<p align="center">Built by <a href="https://github.com/stackblaze-adam">Adam Kamali</a> · Sponsored by <a href="https://stackblaze.com">Stackblaze.com</a></p>
+<p align="center">Sponsored by <a href="https://stackblaze.com">Stackblaze.com</a></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python">

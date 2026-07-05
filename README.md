@@ -177,4 +177,4 @@ VMExec includes code from [NovaBak](https://github.com/haimtoledano/NovaBak) by 
 
 ## License
 
-MIT © [Adam Kamali](https://github.com/stackblaze-adam) · Sponsored by [Stackblaze.com](https://stackblaze.com)
+MIT © VMExec · Sponsored by [Stackblaze.com](https://stackblaze.com)

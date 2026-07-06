@@ -103,38 +103,48 @@ def get_snapshot_change_ids(snap_obj, disk_keys):
     return result
 
 
-def query_changed_areas(si, snap_obj, device_key, previous_change_id, capacity_bytes):
+def query_changed_areas(vm, snap_obj, device_key, previous_change_id, capacity_bytes):
     """
     Query all changed disk areas since previous_change_id.
     previous_change_id use '*' for all blocks (first incremental after full).
     Returns list of (start, length) tuples.
+
+    Uses VirtualMachine.QueryChangedDiskAreas (not VirtualDiskManager).
     """
-    content = si.RetrieveContent()
-    vdm = content.virtualDiskManager
     areas = []
-    offset = 0
+    start_offset = 0
     change_id = previous_change_id or "*"
 
-    while offset < capacity_bytes:
-        info = vdm.QueryChangedDiskAreas(
-            snapshot=snap_obj,
-            device=device_key,
-            startOffset=offset,
-            changeId=change_id,
-        )
+    while start_offset < capacity_bytes:
+        try:
+            info = vm.QueryChangedDiskAreas(
+                snapshot=snap_obj,
+                deviceKey=int(device_key),
+                startOffset=int(start_offset),
+                changeId=str(change_id),
+            )
+        except Exception as e:
+            if e.__class__.__name__ == "InvalidArgument":
+                break
+            raise
+
         changed = getattr(info, "changedArea", None) or []
         if not changed:
             break
         for area in changed:
             start = int(area.start)
             length = int(area.length)
-            areas.append((start, length))
-        next_offset = offset
-        for area in changed:
-            next_offset = max(next_offset, int(area.start) + int(area.length))
-        if next_offset <= offset:
+            if length > 0:
+                areas.append((start, length))
+
+        info_length = int(getattr(info, "length", 0) or 0)
+        if info_length <= 0:
             break
-        offset = next_offset
+        info_start = int(getattr(info, "startOffset", start_offset) or start_offset)
+        next_offset = info_start + info_length
+        if next_offset <= start_offset:
+            break
+        start_offset = next_offset
 
     return areas
 

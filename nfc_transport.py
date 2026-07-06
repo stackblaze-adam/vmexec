@@ -174,6 +174,162 @@ def _write_minimal_descriptor(storage, desc_rel, flat_filename, size_bytes, adap
         f.write(content.encode("utf-8"))
 
 
+def _disk_export_names(disk):
+    """Names ExportSnapshot may use in device targetId for this disk."""
+    import re
+    base = os.path.basename(disk["rel_path"])
+    names = {base, base.replace(".vmdk", "-flat.vmdk")}
+    plain = re.sub(r"-\d+\.vmdk$", ".vmdk", base)
+    names.add(plain)
+    names.add(plain.replace(".vmdk", "-flat.vmdk"))
+    return names
+
+
+def _list_stream_devices(lease):
+    devices = []
+    for device in getattr(lease.info, "deviceUrl", None) or []:
+        target_id = getattr(device, "targetId", None)
+        url = getattr(device, "url", None)
+        if target_id and url:
+            devices.append(device)
+    return devices
+
+
+def _find_device_url(lease, disk, disk_index=0):
+    """Return (url, file_size) for disk in an ExportSnapshot lease."""
+    names = _disk_export_names(disk)
+    devices = _list_stream_devices(lease)
+
+    for device in devices:
+        target_id = getattr(device, "targetId", None) or ""
+        url = getattr(device, "url", None)
+        tid_base = os.path.basename(str(target_id))
+        if tid_base in names or target_id in names:
+            return url, int(getattr(device, "fileSize", 0) or 0)
+
+    expected = f"disk-{disk_index}"
+    for device in devices:
+        if getattr(device, "targetId", None) == expected:
+            return device.url, int(getattr(device, "fileSize", 0) or 0)
+
+    if disk_index < len(devices):
+        device = devices[disk_index]
+        return device.url, int(getattr(device, "fileSize", 0) or 0)
+
+    if len(devices) == 1:
+        device = devices[0]
+        return device.url, int(getattr(device, "fileSize", 0) or 0)
+
+    log_warn(
+        f"[NFC] No device URL for {os.path.basename(disk['rel_path'])} "
+        f"(index={disk_index}); lease devices="
+        f"{[getattr(d, 'targetId', None) for d in devices]}"
+    )
+    return None, 0
+
+
+class NfcSnapshotLeaseSession:
+    """Keeps an ExportSnapshot HttpNfcLease open for range reads or disk streaming."""
+
+    def __init__(self, snap_obj, is_cancelled_func=None):
+        self._snap_obj = snap_obj
+        self._is_cancelled_func = is_cancelled_func
+        self.lease = None
+        self._updater = None
+
+    def __enter__(self):
+        self.lease = self._snap_obj.ExportSnapshot()
+        _wait_lease_ready(self.lease, is_cancelled_func=self._is_cancelled_func)
+        if self.lease.state != vim.HttpNfcLease.State.ready:
+            raise RuntimeError(f"ExportSnapshot lease not ready: {self.lease.state}")
+        self._updater = _LeaseProgressUpdater(self.lease, interval_sec=15)
+        self._updater.start()
+        return self
+
+    def complete(self):
+        if not self.lease:
+            return
+        if self._updater:
+            self._updater.set_progress(100)
+            self._updater.stop()
+        try:
+            if self.lease.state == vim.HttpNfcLease.State.ready:
+                self.lease.HttpNfcLeaseProgress(100)
+                self.lease.HttpNfcLeaseComplete()
+        except Exception as e:
+            log_warn(f"[NFC] Lease complete: {e}")
+
+    def abort(self):
+        if not self.lease:
+            return
+        if self._updater:
+            self._updater.stop()
+        try:
+            if self.lease.state not in (vim.HttpNfcLease.State.done, vim.HttpNfcLease.State.error):
+                self.lease.HttpNfcLeaseAbort()
+        except Exception:
+            pass
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type:
+            self.abort()
+        else:
+            self.complete()
+        self.lease = None
+        self._updater = None
+        return False
+
+
+def stream_snapshot_disk_nfc(
+    si,
+    snap_obj,
+    disk,
+    storage,
+    dest_rel_path,
+    disk_index=0,
+    progress_callback=None,
+    progress_base=0,
+    progress_total=100,
+    speed_callback=None,
+    is_cancelled_func=None,
+    lease_session=None,
+    connection_type=vsphere_context.CONN_AUTO,
+):
+    """Stream one snapshot disk via ExportSnapshot NFC (existing snapshot)."""
+    from backup_engine import _get_session_cookies
+
+    own_session = lease_session is None
+    session = lease_session
+    if own_session:
+        session = NfcSnapshotLeaseSession(snap_obj, is_cancelled_func=is_cancelled_func)
+        session.__enter__()
+
+    try:
+        url, file_size = _find_device_url(session.lease, disk, disk_index=disk_index)
+        if not url:
+            raise RuntimeError(
+                f"No ExportSnapshot device URL for {os.path.basename(disk['rel_path'])}"
+            )
+        log_info(
+            f"[NFC] Streaming snapshot disk {os.path.basename(disk['rel_path'])} "
+            f"→ {dest_rel_path}"
+        )
+        cookies = _get_session_cookies(si)
+        return _stream_url_to_storage(
+            url, storage, dest_rel_path, cookies,
+            total_size_hint=file_size,
+            progress_callback=progress_callback,
+            progress_base=progress_base,
+            progress_total=progress_total,
+            speed_callback=speed_callback,
+            is_cancelled_func=is_cancelled_func,
+            lease_updater=session._updater if session else None,
+        )
+    finally:
+        if own_session and session:
+            session.__exit__(None, None, None)
+
+
 def export_live_nfc(
     si,
     vm_name,

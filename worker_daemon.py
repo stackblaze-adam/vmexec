@@ -2,12 +2,29 @@ import os
 import sys
 import time
 import hashlib
+import threading
 from models import SessionLocal, VM, Config, ESXiHost, init_db
 import worker
 from logger_util import log_info, log_error, log_critical
 from config_env import DATA_DIR
 
+SNAPSHOT_SWEEP_INTERVAL_SECS = 300
+
 HEARTBEAT_FILE = os.path.join(DATA_DIR, "worker.heartbeat")
+
+
+def _run_orphan_snapshot_sweep(min_age_secs=120):
+    """Background sweep for VMBACKUP_TEMP_* snapshots left by crashed or killed backups."""
+    try:
+        from backup_engine import cleanup_orphaned_snapshots_all
+        skip = worker.get_active_backup_vm_ids()
+        removed = cleanup_orphaned_snapshots_all(skip_vm_ids=skip, min_age_secs=min_age_secs)
+        if removed:
+            label = "Startup" if min_age_secs == 0 else "Orphan sweep"
+            log_info(f"[SNAPSHOT] {label}: removed {removed} orphaned backup snapshot(s)")
+    except Exception as e:
+        log_error(f"[SNAPSHOT] Orphan sweep failed: {e}")
+
 
 def write_heartbeat():
     try:
@@ -60,6 +77,37 @@ def run_daemon():
     log_info(f"[PID {pid}] Enter polling loop. Monitoring DB for manual triggers and schedule changes.")
     write_heartbeat()
     
+    # Reconcile stale in-progress state: no backup thread survives a restart,
+    # so any non-empty action (Backing up.../Queued.../Stopping.../CBT.../waiting)
+    # is stale and must be cleared. Preserve PENDING_RUN so a queued manual
+    # trigger still fires after the restart.
+    db = SessionLocal()
+    try:
+        for v in db.query(VM).all():
+            action = (v.current_action or "").strip()
+            if not action or action == "PENDING_RUN":
+                continue
+            log_info(
+                f"[PID {pid}] Clearing stale action '{action}' for {v.vm_name} "
+                "(no backup survives a worker restart)"
+            )
+            v.current_action = ""
+            v.progress = 0
+            v.speed_mbps = 0.0
+        db.commit()
+    finally:
+        db.close()
+
+    # Remove orphaned VMBACKUP_TEMP_* snapshots left by prior worker crashes/restarts
+    threading.Thread(
+        target=_run_orphan_snapshot_sweep,
+        kwargs={"min_age_secs": 0},
+        daemon=True,
+        name="startup-snapshot-sweep",
+    ).start()
+
+    last_snapshot_sweep = time.time()
+
     while True:
         try:
             write_heartbeat()
@@ -82,13 +130,30 @@ def run_daemon():
                 
             # 3. Poll for Manual Stop Requests ("PENDING_STOP")
             pending_stops = db.query(VM).filter(VM.current_action == "PENDING_STOP").all()
-            for vm in pending_stops:
-                log_info(f"[PID {pid}] Found manual stop request for VM: {vm.vm_name}")
-                worker.stop_job(vm.id)
-                vm.current_action = "Stopping..."
-                db.commit()
+            if pending_stops:
+                active_ids = worker.get_active_backup_vm_ids()
+                for vm in pending_stops:
+                    log_info(f"[PID {pid}] Found manual stop request for VM: {vm.vm_name}")
+                    worker.stop_job(vm.id)
+                    if vm.id in active_ids or vm.id in worker.active_processes:
+                        vm.current_action = "Stopping..."
+                    else:
+                        # Nothing actually running to stop; return to idle.
+                        vm.current_action = ""
+                        vm.progress = 0
+                        vm.speed_mbps = 0.0
+                    db.commit()
                 
             db.close()
+
+            now = time.time()
+            if now - last_snapshot_sweep >= SNAPSHOT_SWEEP_INTERVAL_SECS:
+                last_snapshot_sweep = now
+                threading.Thread(
+                    target=_run_orphan_snapshot_sweep,
+                    kwargs={"min_age_secs": 120},
+                    daemon=True,
+                ).start()
             
         except Exception as e:
             log_error(f"{e}")

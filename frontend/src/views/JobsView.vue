@@ -3,16 +3,24 @@
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-bold">Backup</h1>
-        <button type="button" :class="paused ? 'btn-secondary' : 'btn-danger'" class="px-3 py-1.5 text-xs font-medium" @click="togglePause(!paused)">
+        <button
+          type="button"
+          :class="paused ? btnSecondary : btnDanger"
+          class="px-3 py-1.5 text-xs font-medium"
+          @click="togglePause(!paused)"
+        >
           {{ paused ? 'Resume all' : 'Pause all' }}
         </button>
       </div>
-      <button type="button" class="btn-secondary px-3 py-1.5 text-sm" @click="showInventory = true">Inventory</button>
+      <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-sm" @click="showInventory = true">Inventory</button>
     </div>
 
-    <div v-if="paused" class="jobs-paused-banner">
+    <div
+      v-if="paused"
+      class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 mb-3 border border-amber-500/35 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400"
+    >
       <span class="text-sm">All backups are paused</span>
-      <button type="button" class="btn-secondary px-3 py-1 text-xs" @click="togglePause(false)">Resume all</button>
+      <button type="button" :class="btnSecondary" class="px-3 py-1 text-xs" @click="togglePause(false)">Resume all</button>
     </div>
 
     <div class="flex flex-wrap gap-3 mb-4">
@@ -34,80 +42,134 @@
       </select>
     </div>
 
-    <div v-if="selectedIds.size" class="jobs-bulk-bar">
+    <div
+      v-if="selectedIds.size"
+      class="flex flex-wrap items-center gap-3 px-4 py-2.5 mb-3 border border-border rounded-md bg-nav"
+    >
       <span class="text-sm font-medium">{{ selectedIds.size }} selected</span>
-      <button type="button" class="btn-primary px-3 py-1.5 text-xs font-medium" @click="runSelected">Run selected</button>
-      <button type="button" class="btn-danger px-3 py-1.5 text-xs font-medium" @click="abortSelected">Abort selected</button>
-      <button type="button" class="btn-secondary px-3 py-1.5 text-xs font-medium" @click="pauseSelected">Pause selected</button>
-      <button type="button" class="btn-secondary px-3 py-1.5 text-xs font-medium hover-text-red" @click="removeSelected">Remove selected</button>
+      <button type="button" :class="btnPrimary" class="px-3 py-1.5 text-xs font-medium" @click="runSelected">Run selected</button>
+      <button type="button" :class="btnDanger" class="px-3 py-1.5 text-xs font-medium" @click="abortSelected">Abort selected</button>
+      <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium" @click="pauseSelected">Pause selected</button>
+      <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium hover:text-red-500" @click="removeSelected">Remove selected</button>
       <button type="button" class="text-xs font-medium opacity-60" @click="clearSelection">Clear</button>
     </div>
 
-    <div class="card overflow-x-auto">
-      <table class="jobs-table">
+    <div class="rounded-lg border border-border bg-card shadow-card overflow-x-auto">
+      <table class="w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
-            <th class="w-10 text-center">
-              <input ref="selectAllRef" type="checkbox" class="job-row-cb" :checked="allVisibleSelected" @change="toggleSelectAll" />
+            <th class="w-10 text-center text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">
+              <input ref="selectAllRef" type="checkbox" class="w-4 h-4 cursor-pointer accent-brand" :checked="allVisibleSelected" @change="toggleSelectAll" />
             </th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'name' }" @click="setSort('name')">Virtual Machine<span class="jobs-sort-ind">{{ sortInd('name') }}</span></th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'host' }" @click="setSort('host')">Host<span class="jobs-sort-ind">{{ sortInd('host') }}</span></th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'status' }" @click="setSort('status')">Status<span class="jobs-sort-ind">{{ sortInd('status') }}</span></th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'secondarycopy' }" @click="setSort('secondarycopy')">2nd Copy<span class="jobs-sort-ind">{{ sortInd('secondarycopy') }}</span></th>
-            <th>Progress</th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'lastbackup' }" @click="setSort('lastbackup')">Last Backup<span class="jobs-sort-ind">{{ sortInd('lastbackup') }}</span></th>
-            <th class="jobs-sort-th" :class="{ active: sortKey === 'schedule' }" @click="setSort('schedule')">Schedule<span class="jobs-sort-ind">{{ sortInd('schedule') }}</span></th>
-            <th class="text-right">Actions</th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'name' }"
+              @click="setSort('name')"
+            >
+              Virtual Machine<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('name') }}</span>
+            </th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'host' }"
+              @click="setSort('host')"
+            >
+              Host<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('host') }}</span>
+            </th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'status' }"
+              @click="setSort('status')"
+            >
+              Status<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('status') }}</span>
+            </th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'secondarycopy' }"
+              @click="setSort('secondarycopy')"
+            >
+              2nd Copy<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('secondarycopy') }}</span>
+            </th>
+            <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Progress</th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'lastbackup' }"
+              @click="setSort('lastbackup')"
+            >
+              Last Backup<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('lastbackup') }}</span>
+            </th>
+            <th
+              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
+              :class="{ 'text-brand': sortKey === 'schedule' }"
+              @click="setSort('schedule')"
+            >
+              Schedule<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('schedule') }}</span>
+            </th>
+            <th class="text-right text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="vm in sorted" :key="vm.id" class="vm-job-row">
-            <td class="text-center">
-              <input type="checkbox" class="job-row-cb" :checked="selectedIds.has(vm.id)" @change="toggleSelect(vm.id, $event.target.checked)" />
+          <tr v-for="vm in sorted" :key="vm.id" class="hover:bg-blue-500/[0.04]">
+            <td class="text-center px-4 py-3 border-b border-border align-middle">
+              <input type="checkbox" class="w-4 h-4 cursor-pointer accent-brand" :checked="selectedIds.has(vm.id)" @change="toggleSelect(vm.id, $event.target.checked)" />
             </td>
-            <td>
+            <td class="px-4 py-3 border-b border-border align-middle">
               <div class="font-semibold">{{ vm.vm_name }}</div>
-              <div class="text-xs" style="color: var(--text-muted)">{{ vm.cpu_count }} vCPU · {{ Math.round((vm.memory_mb || 0) / 1024) }}GB · {{ vm.storage_gb }}GB</div>
+              <div class="text-xs text-muted">{{ vm.cpu_count }} vCPU · {{ Math.round((vm.memory_mb || 0) / 1024) }}GB · {{ vm.storage_gb }}GB</div>
             </td>
-            <td class="text-xs font-mono" style="color: var(--brand)">{{ vm.host_name || '—' }}</td>
-            <td>
-              <StatusBadge v-bind="rowStatus(vm)" />
+            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono text-brand">{{ vm.host_name || '—' }}</td>
+            <td class="px-4 py-3 border-b border-border align-middle">
+              <button
+                v-if="isActive(vm) || isFailed(vm)"
+                type="button"
+                class="inline-flex items-center gap-1 cursor-pointer rounded-full transition-shadow"
+                :class="isActive(vm) ? 'hover:ring-2 hover:ring-blue-500/25' : 'hover:ring-2 hover:ring-red-500/25'"
+                :title="isActive(vm) ? 'View backup progress' : 'View failure details'"
+                @click="openJobDrawer(vm)"
+              >
+                <StatusBadge v-bind="rowStatus(vm)" />
+              </button>
+              <StatusBadge v-else v-bind="rowStatus(vm)" />
               <span v-if="vm.is_job_active" class="ml-1 text-xs opacity-60">scheduled</span>
               <span v-else-if="vm.is_selected" class="ml-1 text-xs opacity-60">paused</span>
             </td>
-            <td><StatusBadge v-bind="rowCopy(vm)" /></td>
-            <td class="min-w-[140px]">
+            <td class="px-4 py-3 border-b border-border align-middle"><StatusBadge v-bind="rowCopy(vm)" /></td>
+            <td class="px-4 py-3 border-b border-border align-middle min-w-[140px]">
               <div v-if="isActive(vm)">
                 <div class="flex justify-between text-xs mb-1">
-                  <span class="truncate max-w-[120px]" style="color: var(--brand)">{{ progressText(vm) }}</span>
+                  <span class="truncate max-w-[120px] text-brand">{{ progressText(vm) }}</span>
                   <span class="font-mono">{{ liveProgress(vm).progress }}%</span>
                 </div>
-                <div class="prog-container active"><div class="prog-bar" :style="{ width: liveProgress(vm).progress + '%' }"></div></div>
+                <div class="block h-1 mt-1 bg-border rounded-sm overflow-hidden">
+                  <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: liveProgress(vm).progress + '%' }"></div>
+                </div>
               </div>
-              <span v-else class="text-xs" style="color: var(--text-muted)">—</span>
+              <span v-else class="text-xs text-muted">—</span>
             </td>
-            <td class="text-xs font-mono whitespace-nowrap" style="color: var(--text-muted)">{{ formatDate(liveProgress(vm).last_backup_ts ? liveProgress(vm).last_backup_ts : vm.last_backup) }}</td>
-            <td class="text-xs whitespace-nowrap">{{ scheduleLabel(vm) }}</td>
-            <td class="text-right whitespace-nowrap actions-cell">
+            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono whitespace-nowrap text-muted">{{ formatDate(liveProgress(vm).last_backup_ts ? liveProgress(vm).last_backup_ts : vm.last_backup) }}</td>
+            <td class="px-4 py-3 border-b border-border align-middle text-xs whitespace-nowrap">{{ scheduleLabel(vm) }}</td>
+            <td class="text-right px-4 py-3 border-b border-border align-middle whitespace-nowrap overflow-visible relative">
               <div class="inline-flex gap-1 items-center justify-end">
-                <button v-if="isActive(vm)" type="button" class="btn-danger px-2 py-1 text-xs" @click="stopJob(vm.id)">Stop</button>
-                <button v-else type="button" class="btn-primary px-2 py-1 text-xs" :disabled="!auth.isOperator" @click="runJob(vm.id)">Run</button>
-                <div class="relative job-actions-wrap">
-                  <button type="button" class="btn-secondary p-1.5 rounded" title="Schedule settings" @click="toggleScheduleMenu(vm.id)">⏱</button>
-                  <div v-if="openScheduleId === vm.id" class="job-actions-menu">
-                    <div class="job-actions-menu-header">Schedule</div>
+                <button v-if="isActive(vm)" type="button" :class="btnDanger" class="px-2 py-1 text-xs" @click="stopJob(vm.id)">Stop</button>
+                <button v-else type="button" :class="btnPrimary" class="px-2 py-1 text-xs" :disabled="!auth.isOperator" @click="runJob(vm.id)">Run</button>
+                <div class="relative inline-block" data-schedule-menu>
+                  <button type="button" :class="btnSecondary" class="p-1.5 rounded" title="Schedule settings" @click="toggleScheduleMenu(vm.id)">⏱</button>
+                  <div
+                    v-if="openScheduleId === vm.id"
+                    class="absolute right-0 top-[calc(100%+0.35rem)] z-60 min-w-[15.5rem] max-w-[17rem] p-3 rounded-lg border border-border bg-card shadow-[0_10px_28px_rgba(0,0,0,0.16)] text-left"
+                  >
+                    <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-2 pb-1.5 border-b border-border">Schedule</div>
                     <JobSchedulePopover :vm="vm" @updated="onVmUpdated" />
                   </div>
                 </div>
-                <button type="button" class="btn-secondary p-1.5 rounded hover-text-red" title="Remove from tasks" @click="removeVm(vm)">🗑</button>
+                <button type="button" :class="btnSecondary" class="p-1.5 rounded hover:text-red-500" title="Remove from tasks" @click="removeVm(vm)">🗑</button>
               </div>
             </td>
           </tr>
           <tr v-if="!sorted.length">
-            <td colspan="9" class="py-12 text-center" style="color: var(--text-muted)">
+            <td colspan="9" class="py-12 text-center text-muted">
               <div v-if="!jobs.length" class="text-sm font-medium mb-1">No backup tasks configured</div>
               <div v-if="!jobs.length" class="text-xs opacity-70 mb-3">Select VMs in Inventory, then apply selection.</div>
-              <button v-if="!jobs.length" type="button" class="btn-secondary px-3 py-1.5 text-xs font-semibold" @click="showInventory = true">Open Inventory</button>
+              <button v-if="!jobs.length" type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-semibold" @click="showInventory = true">Open Inventory</button>
               <span v-else>No VMs match your filters</span>
             </td>
           </tr>
@@ -116,64 +178,198 @@
     </div>
 
     <!-- Inventory drawer -->
-    <div v-if="showInventory" class="inventory-drawer">
-      <div class="inventory-drawer-backdrop" @click="showInventory = false"></div>
-      <div class="inventory-drawer-panel">
-        <div class="inventory-drawer-header">
-          <h2 class="font-bold">Backup inventory</h2>
-          <button type="button" class="inventory-drawer-close" @click="showInventory = false">×</button>
+    <div v-if="showInventory" class="fixed inset-0 z-80">
+      <div class="absolute inset-0 bg-black/45 backdrop-blur-[1px]" @click="showInventory = false"></div>
+      <aside
+        class="absolute top-0 right-0 bottom-0 w-full max-w-lg flex flex-col bg-card border-l border-border shadow-[-4px_0_24px_rgba(0,0,0,0.18)]"
+        role="dialog"
+        aria-labelledby="inventory-drawer-title"
+      >
+        <div class="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-border bg-nav shrink-0">
+          <div>
+            <h3 id="inventory-drawer-title" class="text-base font-semibold leading-tight m-0">Backup inventory</h3>
+            <p class="text-[0.625rem] mt-0.5 text-muted opacity-75">{{ allVms.length }} VM(s) · scan and enable backup</p>
+          </div>
+          <button
+            type="button"
+            class="p-1.5 rounded-md text-muted border border-border bg-transparent cursor-pointer hover:text-main hover:bg-card"
+            aria-label="Close inventory"
+            @click="showInventory = false"
+          >
+            <svg class="w-4 h-4 block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
-        <div class="inventory-drawer-body">
-          <div class="px-4 py-3 border-b" style="border-color: var(--border-color); background: var(--bg-nav)">
-            <div class="flex flex-col gap-2">
-              <select v-model="scanHostId" class="py-2 px-3 text-xs rounded w-full">
+        <div class="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div id="backup-inventory-panel" class="flex flex-col h-full min-h-0">
+            <div class="flex flex-col gap-2 px-4 py-3 border-b border-border bg-nav shrink-0">
+              <select v-model="scanHostId" class="w-full px-3 py-2 text-xs rounded-md">
                 <option v-for="h in hosts" :key="h.id" :value="h.id">{{ h.name }} ({{ h.host_ip }})</option>
               </select>
-              <button type="button" class="btn-primary px-3 py-2 text-xs font-semibold w-full" @click="syncHost">Scan datacenter</button>
+              <button type="button" :class="btnPrimary" class="w-full px-3 py-2 text-xs font-semibold" @click="syncHost">Scan datacenter</button>
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto">
+              <table class="w-full border-collapse text-xs text-left">
+                <thead>
+                  <tr>
+                    <th class="sticky top-0 z-[1] w-11 text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-muted px-3 py-2 bg-nav border-b border-border">
+                      <input type="checkbox" class="w-3.5 h-3.5 cursor-pointer accent-brand" :checked="inventoryAllSelected" @change="toggleInventoryAll" aria-label="Select all for backup" />
+                    </th>
+                    <th class="sticky top-0 z-[1] w-[4.5rem] text-center text-[0.6875rem] font-semibold uppercase tracking-wide text-muted px-3 py-2 bg-nav border-b border-border">Power</th>
+                    <th class="sticky top-0 z-[1] text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-muted px-3 py-2 bg-nav border-b border-border">Virtual Machine</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="vm in allVms" :key="vm.id" class="hover:bg-blue-500/[0.04]">
+                    <td class="w-11 text-center px-3 py-2 border-b border-border align-middle">
+                      <input type="checkbox" class="w-3.5 h-3.5 cursor-pointer accent-brand" :checked="vm.is_selected" @change="toggleInventoryVm(vm, $event.target.checked)" />
+                    </td>
+                    <td class="w-[4.5rem] text-center px-3 py-2 border-b border-border align-middle">
+                      <StatusBadge :cls="powerCls(vm.power_state)" :label="powerLabel(vm.power_state)" class="text-[0.625rem] px-[0.45rem] py-0.5" />
+                    </td>
+                    <td class="px-3 py-2 border-b border-border align-middle">
+                      <div class="font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-64" :title="vm.vm_name">{{ vm.vm_name }}</div>
+                      <div class="text-[0.625rem] font-mono opacity-60 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">{{ vm.host_name }}</div>
+                    </td>
+                  </tr>
+                  <tr v-if="!allVms.length">
+                    <td colspan="3" class="px-3 py-8 text-center text-xs font-medium text-muted">No inventory. Run a scan.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div class="inventory-scroll overflow-auto flex-1">
-            <table class="min-w-full text-left text-xs">
-              <thead style="background-color: var(--bg-nav); border-bottom: 1px solid var(--border-color)">
-                <tr>
-                  <th class="px-3 py-2 w-12 text-center"><input type="checkbox" class="job-row-cb" :checked="inventoryAllSelected" @change="toggleInventoryAll" /></th>
-                  <th class="px-3 py-2 w-20 text-center">Power</th>
-                  <th class="px-3 py-2">Virtual Machine</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="vm in allVms" :key="vm.id">
-                  <td class="px-3 py-2 text-center"><input type="checkbox" class="job-row-cb" :checked="vm.is_selected" @change="toggleInventoryVm(vm, $event.target.checked)" /></td>
-                  <td class="px-3 py-2 text-center"><StatusBadge :cls="powerCls(vm.power_state)" :label="powerLabel(vm.power_state)" /></td>
-                  <td class="px-3 py-2">
-                    <div class="font-medium truncate">{{ vm.vm_name }}</div>
-                    <div class="text-[10px] font-mono opacity-60 truncate">{{ vm.host_name }}</div>
-                  </td>
-                </tr>
-                <tr v-if="!allVms.length"><td colspan="3" class="px-3 py-8 text-center" style="color: var(--text-muted)">No inventory. Run a scan.</td></tr>
-              </tbody>
-            </table>
+        </div>
+        <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-t border-border bg-nav shrink-0 max-[480px]:flex-col max-[480px]:items-stretch max-[480px]:gap-2.5">
+          <span class="text-xs text-muted shrink-0">{{ inventorySelectionLabel }}</span>
+          <div class="flex gap-2 flex-wrap justify-end max-[480px]:justify-stretch">
+            <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium max-[480px]:flex-1" @click="showInventory = false">Cancel</button>
+            <button type="button" :class="btnPrimary" class="px-3 py-1.5 text-xs font-semibold max-[480px]:flex-1" :disabled="!inventoryPendingCount" @click="applyInventory">Apply selection ({{ inventoryPendingCount }})</button>
           </div>
         </div>
-        <div class="inventory-drawer-footer">
-          <div class="inventory-drawer-footer-actions">
-            <button type="button" class="btn-secondary px-3 py-1.5 text-sm" @click="showInventory = false">Cancel</button>
-            <button type="button" class="btn-primary px-3 py-1.5 text-sm" @click="applyInventory">Apply selection ({{ inventoryPendingCount }})</button>
+      </aside>
+    </div>
+
+    <!-- Job details drawer (running or failed) -->
+    <div v-if="detailVm" class="fixed inset-0 z-80">
+      <div class="absolute inset-0 bg-black/45 backdrop-blur-[1px]" @click="closeJobDrawer"></div>
+      <aside
+        class="absolute top-0 right-0 bottom-0 w-full max-w-md flex flex-col bg-card border-l border-border shadow-[-4px_0_24px_rgba(0,0,0,0.18)]"
+        role="dialog"
+        aria-labelledby="job-drawer-title"
+      >
+        <div class="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-border bg-nav shrink-0">
+          <div class="min-w-0">
+            <h3 id="job-drawer-title" class="text-base font-semibold leading-tight m-0 truncate">{{ drawerTitle }}</h3>
+            <p class="text-sm font-mono text-brand mt-0.5 truncate">{{ detailVm.vm_name }}</p>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 p-1.5 rounded-md text-muted border border-border bg-transparent cursor-pointer hover:text-main hover:bg-card"
+            aria-label="Close"
+            @click="closeJobDrawer"
+          >
+            <svg class="w-4 h-4 block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Host</span>
+              <span class="font-mono text-brand">{{ detailVm.host_name || '—' }}</span>
+            </div>
+            <div>
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">{{ drawerIsRunning ? 'Started' : 'Last attempt' }}</span>
+              <span class="font-mono text-muted">{{ formatDate(detailVm.last_backup) }}</span>
+            </div>
+            <div class="col-span-2">
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Schedule</span>
+              <span>{{ scheduleLabel(detailVm) }}</span>
+            </div>
+          </div>
+
+          <div v-if="drawerIsRunning">
+            <span class="block text-xs font-semibold uppercase tracking-wide text-muted mb-2">Progress</span>
+            <div class="rounded-lg border border-blue-500/25 bg-blue-500/8 p-4">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <StatusBadge cls="status-running" label="Running" />
+                <span class="text-lg font-bold font-mono text-brand tabular-nums">{{ drawerProgress.progress }}%</span>
+              </div>
+              <div class="h-2 rounded-sm bg-border overflow-hidden mb-2">
+                <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: drawerProgress.progress + '%' }"></div>
+              </div>
+              <p class="text-sm text-main m-0">{{ progressText(detailVm) }}</p>
+              <p v-if="drawerProgress.speed_mbps > 0" class="text-xs text-muted mt-1.5 mb-0">{{ drawerProgress.speed_mbps }} MB/s</p>
+            </div>
+          </div>
+
+          <div v-else-if="isFailed(detailVm)">
+            <span class="block text-xs font-semibold uppercase tracking-wide text-muted mb-2">Error</span>
+            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words font-mono p-3 rounded-lg border border-red-500/25 bg-red-500/8 text-red-400 m-0">{{ failureMessage(detailVm) || 'No error message recorded.' }}</pre>
+          </div>
+
+          <div>
+            <span class="block text-xs font-semibold uppercase tracking-wide text-muted mb-2">Recent log entries</span>
+            <div v-if="detailLogsLoading" class="text-xs text-muted py-4 text-center">Loading…</div>
+            <div v-else-if="!detailLogs.length" class="text-xs text-muted py-4 text-center italic">No log entries found.</div>
+            <div v-else class="rounded-lg border border-border overflow-hidden">
+              <div
+                v-for="log in detailLogs"
+                :key="log.id"
+                class="px-3 py-2.5 border-b border-border last:border-b-0 text-xs"
+              >
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <StatusBadge :cls="logClass(log.status)" :label="log.status" class="text-[0.625rem] px-2 py-0.5" />
+                  <span class="font-mono text-muted shrink-0">{{ formatLogTime(log.timestamp) }}</span>
+                </div>
+                <p v-if="log.message" class="text-muted leading-snug m-0">{{ log.message }}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div class="flex items-center justify-between gap-3 px-4 py-3.5 border-t border-border bg-nav shrink-0">
+          <span class="text-xs text-muted">Check Settings → System Logs for full worker output.</span>
+          <div class="flex gap-2 shrink-0">
+            <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium" @click="closeJobDrawer">Close</button>
+            <button
+              v-if="drawerIsRunning"
+              type="button"
+              :class="btnDanger"
+              class="px-3 py-1.5 text-xs font-semibold"
+              :disabled="!auth.isOperator"
+              @click="stopFromDrawer"
+            >Stop backup</button>
+            <button
+              v-else-if="isFailed(detailVm)"
+              type="button"
+              :class="btnPrimary"
+              class="px-3 py-1.5 text-xs font-semibold"
+              :disabled="!auth.isOperator"
+              @click="retryFromDrawer"
+            >Run again</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { jobsApi, hostsApi } from '@/api/client'
+import { jobsApi, hostsApi, logsApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useJobProgress, isJobActive, statusBadge, copyBadge, formatDate } from '@/composables/useJobProgress'
 import { useModal } from '@/composables/useModal'
 import StatusBadge from '@/components/StatusBadge.vue'
 import JobSchedulePopover from '@/components/JobSchedulePopover.vue'
+
+const btnPrimary =
+  'inline-flex items-center justify-center rounded-md border-0 bg-brand text-white hover:bg-brand-hover transition-colors duration-200 disabled:opacity-55'
+const btnSecondary =
+  'inline-flex items-center justify-center rounded-md border border-btn-sec-border bg-btn-sec text-btn-sec-text hover:bg-btn-sec-hover transition-colors duration-200'
+const btnDanger =
+  'inline-flex items-center justify-center rounded-md border-0 bg-red-600 text-white hover:bg-red-700 transition-colors duration-200'
 
 const auth = useAuthStore()
 const { confirm, alert } = useModal()
@@ -192,6 +388,9 @@ const sortKey = ref('schedule')
 const sortDir = ref('asc')
 const openScheduleId = ref(null)
 const selectAllRef = ref(null)
+const detailVm = ref(null)
+const detailLogs = ref([])
+const detailLogsLoading = ref(false)
 
 useJobProgress((data) => { progressMap.value = data })
 
@@ -205,6 +404,8 @@ function liveProgress(vm) {
     last_status: vm.last_status,
     last_backup_ts: vm.last_backup ? new Date(vm.last_backup).getTime() / 1000 : 0,
     secondary_copy_status: vm.last_secondary_copy_status,
+    is_running: false,
+    last_backup_message: vm.last_backup_message,
   }
 }
 
@@ -212,10 +413,72 @@ function isActive(vm) {
   return isJobActive(liveProgress(vm))
 }
 
+const drawerIsRunning = computed(() => detailVm.value && isActive(detailVm.value))
+const drawerProgress = computed(() => (detailVm.value ? liveProgress(detailVm.value) : { progress: 0, speed_mbps: 0 }))
+const drawerTitle = computed(() => (drawerIsRunning.value ? 'Backup in progress' : 'Backup failed'))
+
 function rowStatus(vm) {
   const p = liveProgress(vm)
   const b = statusBadge(p.last_status || vm.last_status, isActive(vm))
   return { cls: b.cls, label: b.label }
+}
+
+function isFailed(vm) {
+  const p = liveProgress(vm)
+  return (p.last_status || vm.last_status) === 'Failed'
+}
+
+function failureMessage(vm) {
+  const p = liveProgress(vm)
+  return p.last_backup_message || vm.last_backup_message || ''
+}
+
+async function openJobDrawer(vm) {
+  detailVm.value = vm
+  detailLogsLoading.value = true
+  detailLogs.value = []
+  try {
+    const logs = await logsApi.backup(50)
+    detailLogs.value = logs.filter((l) => l.vm_name === vm.vm_name)
+  } catch {
+    detailLogs.value = []
+  } finally {
+    detailLogsLoading.value = false
+  }
+}
+
+function closeJobDrawer() {
+  detailVm.value = null
+  detailLogs.value = []
+}
+
+async function retryFromDrawer() {
+  if (!detailVm.value) return
+  await runJob(detailVm.value.id)
+  closeJobDrawer()
+}
+
+async function stopFromDrawer() {
+  if (!detailVm.value) return
+  await stopJob(detailVm.value.id)
+}
+
+function logClass(status) {
+  const s = (status || '').toLowerCase()
+  if (s === 'success') return 'status-success'
+  if (s === 'failed') return 'status-error'
+  if (s === 'cancelled') return 'status-cancelled'
+  if (s === 'warning') return 'status-cancelled'
+  return 'status-neutral'
+}
+
+function formatLogTime(ts) {
+  if (!ts) return '—'
+  try {
+    return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ts
+  }
 }
 
 function rowCopy(vm) {
@@ -226,8 +489,12 @@ function rowCopy(vm) {
 
 function progressText(vm) {
   const p = liveProgress(vm)
+  const action = p.current_action || 'Processing…'
+  if (action.startsWith('Backing up...') && (p.speed_mbps || 0) <= 0) {
+    return 'Streaming disk via NBD…'
+  }
   const speed = p.speed_mbps > 0 ? ` · ${p.speed_mbps} MB/s` : ''
-  return (p.current_action || 'Processing…') + speed
+  return action + speed
 }
 
 function scheduleLabel(vm) {
@@ -305,6 +572,10 @@ const sorted = computed(() => {
 const allVisibleSelected = computed(() => sorted.value.length > 0 && sorted.value.every((v) => selectedIds.value.has(v.id)))
 const inventoryAllSelected = computed(() => allVms.value.length > 0 && allVms.value.every((v) => v.is_selected))
 const inventoryPendingCount = computed(() => Object.keys(pendingSelection.value).length)
+const inventorySelectionLabel = computed(() => {
+  const n = inventoryPendingCount.value
+  return n ? `${n} change${n === 1 ? '' : 's'} pending` : 'No changes'
+})
 
 watch(allVisibleSelected, (all) => {
   if (selectAllRef.value) selectAllRef.value.indeterminate = selectedIds.value.size > 0 && !all
@@ -486,7 +757,7 @@ async function applyInventory() {
 }
 
 function onDocClick(e) {
-  if (!e.target.closest('.job-actions-wrap')) openScheduleId.value = null
+  if (!e.target.closest('[data-schedule-menu]')) openScheduleId.value = null
 }
 
 onMounted(() => {
@@ -495,58 +766,3 @@ onMounted(() => {
 })
 onUnmounted(() => document.removeEventListener('click', onDocClick))
 </script>
-
-<style scoped>
-.flex { display: flex; }
-.inline-flex { display: inline-flex; }
-.flex-wrap { flex-wrap: wrap; }
-.flex-col { flex-direction: column; }
-.flex-1 { flex: 1; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.justify-end { justify-content: flex-end; }
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-4 { gap: 1rem; }
-.mb-1 { margin-bottom: 0.25rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.ml-1 { margin-left: 0.25rem; }
-.p-1\.5 { padding: 0.375rem; }
-.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-.py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-.py-12 { padding-top: 3rem; padding-bottom: 3rem; }
-.text-xs { font-size: 0.75rem; }
-.text-sm { font-size: 0.875rem; }
-.text-2xl { font-size: 1.5rem; }
-.text-\[10px\] { font-size: 10px; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-medium { font-weight: 500; }
-.font-mono { font-family: ui-monospace, monospace; }
-.text-right { text-align: right; }
-.text-center { text-align: center; }
-.overflow-auto { overflow: auto; }
-.overflow-x-auto { overflow-x: auto; }
-.min-w-full { min-width: 100%; }
-.min-w-\[140px\] { min-width: 140px; }
-.min-w-\[200px\] { min-width: 200px; }
-.w-10 { width: 2.5rem; }
-.w-12 { width: 3rem; }
-.w-20 { width: 5rem; }
-.whitespace-nowrap { white-space: nowrap; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.max-w-\[120px\] { max-width: 120px; }
-.opacity-60 { opacity: 0.6; }
-.opacity-70 { opacity: 0.7; }
-.rounded { border-radius: 0.375rem; }
-.border-b { border-bottom-width: 1px; }
-.relative { position: relative; }
-.hover-text-red:hover { color: #f87171; border-color: rgba(248,113,113,0.5); }
-</style>

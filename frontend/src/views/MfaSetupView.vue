@@ -1,17 +1,27 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4" style="background: var(--bg-app)">
-    <div class="card w-full max-w-md p-8">
-      <h1 class="text-xl font-bold mb-2">Set up MFA</h1>
-      <p class="text-sm mb-4" style="color: var(--text-muted)">Scan this QR code with Google Authenticator or similar.</p>
-      <div class="flex justify-center mb-4">
-        <img v-if="qr" :src="'data:image/png;base64,' + qr" alt="MFA QR" class="rounded border" style="border-color: var(--border-color)" />
+  <div class="flex min-h-screen items-center justify-center bg-app px-4">
+    <div class="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-card">
+      <h1 class="mb-2 text-xl font-bold">Set up MFA</h1>
+      <p class="mb-4 text-sm text-muted">Scan this QR code with Google Authenticator or similar.</p>
+      <div class="mb-4 flex justify-center">
+        <img
+          v-if="qr"
+          :src="'data:image/png;base64,' + qr"
+          alt="MFA QR"
+          class="rounded border border-border"
+        />
       </div>
-      <p class="text-xs font-mono break-all mb-4 p-2 rounded" style="background: var(--bg-app); color: var(--text-muted)">{{ secret }}</p>
+      <p class="mb-4 break-all rounded bg-app p-2 font-mono text-xs text-muted">{{ secret }}</p>
       <form @submit.prevent="onVerify">
-        <label class="input-label">Verification code</label>
-        <input v-model="code" class="w-full mb-4 px-3 py-2 font-mono" maxlength="6" required />
-        <p v-if="error" class="text-sm mb-3" style="color: #f87171">{{ error }}</p>
-        <button type="submit" class="btn-primary w-full py-2 font-semibold">Enable MFA &amp; continue</button>
+        <label class="mb-1 block text-xs font-semibold uppercase text-muted">Verification code</label>
+        <input v-model="code" class="mb-4 w-full px-3 py-2 font-mono" maxlength="6" required />
+        <p v-if="error" class="mb-3 text-sm text-red-400">{{ error }}</p>
+        <button
+          type="submit"
+          class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border-0 bg-brand py-2 font-semibold text-white hover:bg-brand-hover disabled:opacity-55"
+        >
+          Enable MFA &amp; continue
+        </button>
       </form>
     </div>
   </div>
@@ -53,29 +63,3 @@ async function onVerify() {
   }
 }
 </script>
-
-<style scoped>
-.min-h-screen { min-height: 100vh; }
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.w-full { width: 100%; }
-.max-w-md { max-width: 28rem; }
-.p-8 { padding: 2rem; }
-.p-2 { padding: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.mb-4 { margin-bottom: 1rem; }
-.text-xl { font-size: 1.25rem; }
-.text-sm { font-size: 0.875rem; }
-.text-xs { font-size: 0.75rem; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-mono { font-family: ui-monospace, monospace; }
-.break-all { word-break: break-all; }
-.rounded { border-radius: 0.375rem; }
-.border { border-width: 1px; }
-</style>

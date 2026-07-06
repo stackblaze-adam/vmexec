@@ -3,168 +3,174 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
       <div>
         <h1 class="text-2xl font-bold">Overview</h1>
-        <p class="text-sm mt-1" style="color: var(--text-muted)">Backup health, storage, and activity at a glance</p>
+        <p class="text-sm mt-1 text-muted">Backup health, storage, and activity at a glance</p>
       </div>
-      <div class="flex items-center gap-2 text-xs" style="color: var(--text-muted)">
+      <div class="flex items-center gap-2 text-xs text-muted">
         <span>{{ updatedLabel }}</span>
-        <button type="button" class="btn-secondary px-2 py-1 rounded text-xs font-medium" @click="refresh(true)">Refresh</button>
+        <button type="button" class="rounded bg-btn-sec border border-btn-sec-border text-btn-sec-text px-2 py-1 text-xs font-medium transition-colors duration-200 hover:bg-btn-sec-hover" @click="refresh(true)">Refresh</button>
       </div>
     </div>
 
-    <div v-if="data?.setup_incomplete" class="mb-5 px-4 py-3 rounded-lg border text-sm flex flex-wrap items-center justify-between gap-3" style="border-color: rgba(234,179,8,0.35); background: rgba(234,179,8,0.08)">
+    <div v-if="data?.setup_incomplete" class="mb-5 px-4 py-3 rounded-lg border border-yellow-500/35 bg-yellow-500/8 text-sm flex flex-wrap items-center justify-between gap-3">
       <span>Setup incomplete — configure storage, hosts, and select VMs to protect.</span>
-      <button type="button" class="btn-primary px-3 py-1.5 text-xs font-semibold rounded" @click="openWizard">Open setup wizard</button>
+      <button type="button" class="rounded bg-brand text-white px-3 py-1.5 text-xs font-semibold transition-colors duration-200 hover:bg-brand-hover" @click="openWizard">Open setup wizard</button>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">Protected</div>
-        <div class="overview-stat-value">{{ data?.protected_count ?? '—' }}</div>
-        <div class="overview-stat-sub">{{ data?.scheduled_count ?? 0 }} scheduled</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">Protected</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums">{{ data?.protected_count ?? '—' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">{{ data?.scheduled_count ?? 0 }} scheduled</div>
       </div>
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">Running</div>
-        <div class="overview-stat-value text-blue-400">{{ data?.running_count ?? '—' }}</div>
-        <div class="overview-stat-sub">active backups</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">Running</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums text-blue-400">{{ data?.running_count ?? '—' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">active backups</div>
       </div>
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">Success</div>
-        <div class="overview-stat-value text-emerald-500">{{ data?.status_counts?.Success ?? '—' }}</div>
-        <div class="overview-stat-sub">last run OK</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">Success</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums text-emerald-500">{{ data?.status_counts?.Success ?? '—' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">last run OK</div>
       </div>
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">Failed</div>
-        <div class="overview-stat-value text-red-400">{{ data?.status_counts?.Failed ?? '—' }}</div>
-        <div class="overview-stat-sub">need attention</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">Failed</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums text-red-400">{{ data?.status_counts?.Failed ?? '—' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">need attention</div>
       </div>
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">7d success</div>
-        <div class="overview-stat-value">{{ data?.success_rate_7d != null ? data.success_rate_7d + '%' : '—' }}</div>
-        <div class="overview-stat-sub">{{ logTotal7d }} events</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">7d success</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums">{{ data?.success_rate_7d != null ? data.success_rate_7d + '%' : '—' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">{{ logTotal7d }} events</div>
       </div>
-      <div class="overview-stat-card">
-        <div class="overview-stat-label">Engine</div>
-        <div class="overview-stat-value" :class="data?.worker_online ? 'text-emerald-500' : 'text-red-400'">{{ data?.worker_online ? 'Online' : 'Offline' }}</div>
-        <div class="overview-stat-sub">{{ workerSub }}</div>
+      <div class="p-4 px-[1.1rem] rounded-lg border border-border bg-card">
+        <div class="text-[0.6875rem] font-bold uppercase tracking-wider text-muted mb-1.5">Engine</div>
+        <div class="text-[1.75rem] font-bold leading-tight tabular-nums" :class="data?.worker_online ? 'text-emerald-500' : 'text-red-400'">{{ data?.worker_online ? 'Online' : 'Offline' }}</div>
+        <div class="text-[0.6875rem] mt-1 text-muted">{{ workerSub }}</div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-      <div class="card overview-panel">
-        <div class="overview-panel-header">
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav">
           <span>Storage</span>
-          <span class="overview-chip">{{ data?.storage?.type ?? '—' }}</span>
+          <span class="text-[0.625rem] font-bold uppercase tracking-wide px-[0.45rem] py-[0.15rem] rounded-full bg-brand/12 text-brand">{{ data?.storage?.type ?? '—' }}</span>
         </div>
-        <div class="overview-panel-body">
-          <div class="overview-storage-path-line text-xs">
-            <span style="color: var(--text-muted)">Backup path</span>
-            <span style="color: var(--text-muted)">·</span>
-            <span class="font-mono truncate" style="color: var(--brand)">{{ data?.storage?.path ?? '—' }}</span>
+        <div class="p-4">
+          <div class="flex items-baseline gap-1.5 min-w-0 mb-1 text-xs">
+            <span class="text-muted">Backup path</span>
+            <span class="text-muted">·</span>
+            <span class="font-mono truncate text-brand">{{ data?.storage?.path ?? '—' }}</span>
           </div>
-          <div v-if="data?.storage?.disk_total_gb" class="overview-storage-disk">
-            <div class="overview-donut-wrap">
-              <div class="overview-ring">
-                <svg viewBox="0 0 36 36" class="overview-ring-svg">
-                  <circle class="overview-ring-bg" cx="18" cy="18" r="15.9155" />
-                  <circle class="overview-ring-seg ring-free" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(freePct, 0)" />
-                  <circle class="overview-ring-seg ring-used" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(usedPct, freePct)" />
-                  <circle class="overview-ring-seg ring-backup" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(backupPct, freePct + usedPct)" />
+          <div v-if="data?.storage?.disk_total_gb" class="pt-3 mt-3 border-t border-border">
+            <div class="flex justify-center my-6">
+              <div class="relative mx-auto w-[7.5rem] h-[7.5rem]">
+                <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90">
+                  <circle class="fill-none stroke-border stroke-[3.2]" cx="18" cy="18" r="15.9155" />
+                  <circle class="fill-none stroke-[3.2] stroke-emerald-500 transition-[stroke-dasharray,stroke-dashoffset] duration-[450ms]" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(freePct, 0)" />
+                  <circle class="fill-none stroke-[3.2] stroke-slate-500 transition-[stroke-dasharray,stroke-dashoffset] duration-[450ms]" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(usedPct, freePct)" />
+                  <circle class="fill-none stroke-[3.2] stroke-brand transition-[stroke-dasharray,stroke-dashoffset] duration-[450ms]" cx="18" cy="18" r="15.9155" pathLength="100" :style="donutSeg(backupPct, freePct + usedPct)" />
                 </svg>
-                <div class="overview-ring-center">
-                  <div class="overview-ring-value">{{ data.storage.disk_free_gb?.toFixed(0) }} GB</div>
-                  <div class="overview-ring-pct">{{ data.storage.disk_free_pct?.toFixed(0) }}% free</div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <div class="text-sm font-bold leading-tight tabular-nums">{{ data.storage.disk_free_gb?.toFixed(0) }} GB</div>
+                  <div class="text-[0.625rem] font-semibold mt-0.5 text-muted">{{ data.storage.disk_free_pct?.toFixed(0) }}% free</div>
                 </div>
               </div>
             </div>
-            <p class="overview-donut-legend-line">
-              <span class="overview-legend-item"><span class="overview-legend-swatch ring-free"></span>Free <strong>{{ data.storage.disk_free_gb?.toFixed(1) }} GB</strong></span>
-              <span class="overview-legend-item"><span class="overview-legend-swatch ring-used"></span>Used <strong>{{ data.storage.disk_used_gb?.toFixed(1) }} GB</strong></span>
-              <span class="overview-legend-item"><span class="overview-legend-swatch ring-backup"></span>Backups <strong>{{ data.storage.total_human }}</strong></span>
+            <p class="flex flex-wrap items-center justify-center gap-2 mt-1 text-[0.625rem] text-muted">
+              <span class="inline-flex items-center gap-1"><span class="w-[0.45rem] h-[0.45rem] rounded-full shrink-0 bg-emerald-500"></span>Free <strong>{{ data.storage.disk_free_gb?.toFixed(1) }} GB</strong></span>
+              <span>·</span>
+              <span class="inline-flex items-center gap-1"><span class="w-[0.45rem] h-[0.45rem] rounded-full shrink-0 bg-slate-500"></span>Used <strong>{{ data.storage.disk_used_gb?.toFixed(1) }} GB</strong></span>
+              <span>·</span>
+              <span class="inline-flex items-center gap-1"><span class="w-[0.45rem] h-[0.45rem] rounded-full shrink-0 bg-brand"></span>Backups <strong>{{ data.storage.total_human }}</strong></span>
             </p>
           </div>
           <div v-if="data?.storage?.scan_error" class="mt-3 text-xs text-red-400">{{ data.storage.scan_error }}</div>
         </div>
       </div>
 
-      <div class="card overview-panel">
-        <div class="overview-panel-header"><span>Backup status</span><span class="text-[10px] font-normal opacity-60">protected VMs · last run</span></div>
-        <div class="overview-panel-body">
-          <div v-for="row in statusRows" :key="row.key" class="overview-status-row">
-            <span class="overview-status-row-label">{{ row.key }}</span>
-            <div class="overview-status-row-bar"><div class="overview-status-row-fill" :style="{ width: row.pct + '%', background: row.color }"></div></div>
-            <span class="overview-status-row-count">{{ row.count }}</span>
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav"><span>Backup status</span><span class="text-[10px] font-normal opacity-60">protected VMs · last run</span></div>
+        <div class="p-4">
+          <div v-for="row in statusRows" :key="row.key" class="flex items-center gap-2 mb-2">
+            <span class="w-[4.5rem] text-[0.6875rem] font-semibold text-muted shrink-0">{{ row.key }}</span>
+            <div class="flex-1 h-1.5 rounded-sm bg-border overflow-hidden"><div class="h-full rounded-sm transition-[width] duration-[350ms]" :style="{ width: row.pct + '%', background: row.color }"></div></div>
+            <span class="w-6 text-right text-xs font-bold tabular-nums">{{ row.count }}</span>
           </div>
-          <div class="mt-4 pt-3 border-t grid grid-cols-2 gap-2 text-center" style="border-color: var(--border-color)">
-            <div><div class="text-lg font-bold">{{ data?.host_count ?? '—' }}</div><div class="text-[10px] uppercase" style="color: var(--text-muted)">{{ data?.host_label ?? 'Hosts' }}</div></div>
-            <div><div class="text-lg font-bold">{{ data?.inventory_count ?? '—' }}</div><div class="text-[10px] uppercase" style="color: var(--text-muted)">Inventory VMs</div></div>
+          <div class="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-2 text-center">
+            <div><div class="text-lg font-bold">{{ data?.host_count ?? '—' }}</div><div class="text-[10px] uppercase text-muted">{{ data?.host_label ?? 'Hosts' }}</div></div>
+            <div><div class="text-lg font-bold">{{ data?.inventory_count ?? '—' }}</div><div class="text-[10px] uppercase text-muted">Inventory VMs</div></div>
           </div>
         </div>
       </div>
 
-      <div class="card overview-panel">
-        <div class="overview-panel-header"><span>Last 7 days</span><span class="text-[10px] font-normal opacity-60">backup events</span></div>
-        <div class="overview-panel-body">
-          <div v-for="row in logRows" :key="row.key" class="overview-status-row">
-            <span class="overview-status-row-label">{{ row.key }}</span>
-            <div class="overview-status-row-bar"><div class="overview-status-row-fill" :style="{ width: row.pct + '%', background: row.color }"></div></div>
-            <span class="overview-status-row-count">{{ row.count }}</span>
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav"><span>Last 7 days</span><span class="text-[10px] font-normal opacity-60">backup events</span></div>
+        <div class="p-4">
+          <div v-for="row in logRows" :key="row.key" class="flex items-center gap-2 mb-2">
+            <span class="w-[4.5rem] text-[0.6875rem] font-semibold text-muted shrink-0">{{ row.key }}</span>
+            <div class="flex-1 h-1.5 rounded-sm bg-border overflow-hidden"><div class="h-full rounded-sm transition-[width] duration-[350ms]" :style="{ width: row.pct + '%', background: row.color }"></div></div>
+            <span class="w-6 text-right text-xs font-bold tabular-nums">{{ row.count }}</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-      <div class="card overview-panel">
-        <div class="overview-panel-header">
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav">
           <span>Live backups</span>
-          <RouterLink to="/backup" class="text-xs font-medium" style="color: var(--brand)">View backups →</RouterLink>
+          <RouterLink to="/backup" class="text-xs font-medium text-brand hover:opacity-85 no-underline inline-flex items-center">View backups →</RouterLink>
         </div>
-        <div class="overview-panel-body overview-scroll-list">
-          <div v-if="!data?.live_jobs?.length" class="text-sm py-6 text-center opacity-50 italic">No backups running</div>
-          <div v-for="j in data?.live_jobs || []" :key="j.vm_id" class="overview-live-item">
+        <div class="p-4 min-h-20">
+          <div v-if="!data?.live_jobs?.length" class="text-sm py-7 px-4 text-center text-muted italic opacity-75">No backups running</div>
+          <div v-for="j in data?.live_jobs || []" :key="j.vm_id" class="py-2.5 border-b border-border last:border-b-0">
             <div class="flex justify-between text-sm"><span class="font-semibold">{{ j.vm_name }}</span><span class="font-mono text-blue-400">{{ j.progress }}%</span></div>
-            <div class="text-xs truncate" style="color: var(--text-muted)">{{ j.current_action }}</div>
-            <div class="prog-container active mt-1"><div class="prog-bar" :style="{ width: j.progress + '%' }"></div></div>
+            <div class="text-xs truncate text-muted">{{ j.current_action }}</div>
+            <div class="h-1 rounded-sm bg-border overflow-hidden mt-1.5"><div class="h-full bg-brand transition-[width] duration-500 rounded-sm" :style="{ width: j.progress + '%' }"></div></div>
           </div>
         </div>
       </div>
-      <div class="card overview-panel">
-        <div class="overview-panel-header">
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav">
           <span>Active restores</span>
-          <RouterLink to="/restore" class="text-xs font-medium" style="color: var(--brand)">Restore →</RouterLink>
+          <RouterLink to="/restore" class="text-xs font-medium text-brand hover:opacity-85 no-underline inline-flex items-center">Restore →</RouterLink>
         </div>
-        <div class="overview-panel-body overview-scroll-list">
-          <div v-if="!data?.active_restores?.length" class="text-sm py-6 text-center opacity-50 italic">No active restores</div>
-          <div v-for="r in data?.active_restores || []" :key="r.id" class="overview-live-item">
+        <div class="p-4 min-h-20">
+          <div v-if="!data?.active_restores?.length" class="text-sm py-7 px-4 text-center text-muted italic opacity-75">No active restores</div>
+          <div v-for="r in data?.active_restores || []" :key="r.id" class="py-2.5 border-b border-border last:border-b-0">
             <div class="flex justify-between text-sm"><span class="font-semibold">{{ r.vm_name }}</span><StatusBadge cls="status-running" label="In Progress" /></div>
-            <div class="text-xs" style="color: var(--text-muted)">{{ r.current_action || r.status }}</div>
+            <div class="text-xs text-muted">{{ r.current_action || r.status }}</div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <div class="card overview-panel">
-        <div class="overview-panel-header"><span>Recent activity</span></div>
-        <div class="overview-panel-body overview-scroll-list max-h-80 overflow-y-auto">
-          <div v-for="l in data?.recent_activity || []" :key="l.id" class="overview-activity-item flex justify-between gap-2 text-sm">
-            <span class="truncate">{{ l.vm_name }}</span>
-            <StatusBadge :cls="logClass(l.status)" :label="l.status" />
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav"><span>Recent activity</span></div>
+        <div class="p-4 min-h-20 max-h-80 overflow-y-auto">
+          <div v-for="l in data?.recent_activity || []" :key="l.id" class="py-2.5 border-b border-border last:border-b-0 text-sm">
+            <div class="flex justify-between gap-2">
+              <span class="truncate font-medium">{{ l.vm_name }}</span>
+              <StatusBadge :cls="logClass(l.status)" :label="l.status" />
+            </div>
+            <p v-if="l.message" class="text-[11px] leading-snug text-muted mt-1 truncate" :title="l.message">{{ l.message }}</p>
           </div>
-          <div v-if="!data?.recent_activity?.length" class="text-sm py-6 text-center opacity-50 italic">No recent activity</div>
+          <div v-if="!data?.recent_activity?.length" class="text-sm py-7 px-4 text-center text-muted italic opacity-75">No recent activity</div>
         </div>
       </div>
-      <div class="card overview-panel">
-        <div class="overview-panel-header">
+      <div class="bg-card border border-border rounded-lg shadow-card overflow-hidden transition-all duration-300">
+        <div class="flex items-center justify-between gap-2 py-3 px-4 text-[0.8125rem] font-bold border-b border-border bg-nav">
           <span>Needs attention</span>
-          <span v-if="data?.attention?.length" class="overview-chip overview-chip-warn">{{ data.attention.length }}</span>
+          <span v-if="data?.attention?.length" class="text-[0.625rem] font-bold uppercase tracking-wide px-[0.45rem] py-[0.15rem] rounded-full bg-red-500/12 text-red-400">{{ data.attention.length }}</span>
         </div>
-        <div class="overview-panel-body overview-scroll-list max-h-80 overflow-y-auto">
-          <div v-for="a in data?.attention || []" :key="a.vm_id + a.reason" class="overview-attention-item text-sm">
+        <div class="p-4 min-h-20 max-h-80 overflow-y-auto">
+          <div v-for="a in data?.attention || []" :key="a.vm_id + a.reason" class="py-2.5 border-b border-border last:border-b-0 text-sm">
             <span class="font-medium">{{ a.vm_name }}</span> — {{ a.reason }}
-            <div class="text-xs mt-0.5" style="color: var(--text-muted)">{{ a.host_name }}</div>
+            <div class="text-xs mt-0.5 text-muted">{{ a.host_name }}</div>
+            <p v-if="a.message" class="text-[11px] leading-snug text-red-400 mt-1 truncate" :title="a.message">{{ a.message }}</p>
           </div>
-          <div v-if="!data?.attention?.length" class="text-sm py-6 text-center opacity-50 italic">All clear</div>
+          <div v-if="!data?.attention?.length" class="text-sm py-7 px-4 text-center text-muted italic opacity-75">All clear</div>
         </div>
       </div>
     </div>
@@ -246,58 +252,3 @@ onMounted(() => {
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
-
-<style scoped>
-.flex { display: flex; }
-.grid { display: grid; }
-.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-5 { gap: 1.25rem; }
-.mb-5 { margin-bottom: 1.25rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.mt-1 { margin-top: 0.25rem; }
-.mt-3 { margin-top: 0.75rem; }
-.mt-4 { margin-top: 1rem; }
-.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-.py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
-.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-.py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-.pt-3 { padding-top: 0.75rem; }
-.text-xs { font-size: 0.75rem; }
-.text-sm { font-size: 0.875rem; }
-.text-lg { font-size: 1.125rem; }
-.text-2xl { font-size: 1.5rem; }
-.text-\[10px\] { font-size: 10px; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-medium { font-weight: 500; }
-.font-mono { font-family: ui-monospace, monospace; }
-.font-normal { font-weight: 400; }
-.uppercase { text-transform: uppercase; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.text-center { text-align: center; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.flex-wrap { flex-wrap: wrap; }
-.overflow-y-auto { overflow-y: auto; }
-.max-h-80 { max-height: 20rem; }
-.border-t { border-top-width: 1px; }
-.rounded { border-radius: 0.375rem; }
-.rounded-lg { border-radius: 0.5rem; }
-.italic { font-style: italic; }
-.opacity-50 { opacity: 0.5; }
-.opacity-60 { opacity: 0.6; }
-@media (min-width: 768px) {
-  .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 1024px) {
-  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-}
-</style>

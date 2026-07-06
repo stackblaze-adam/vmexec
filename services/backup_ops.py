@@ -346,7 +346,27 @@ def sync_vms_for_host(db, host_id):
     return {"synced_new": synced, "total_on_host": len(vm_list)}
 
 
-def vm_to_dict(vm):
+def latest_backup_messages(db, vm_names):
+    """Return {vm_name: message} for the most recent log entry per VM."""
+    if not vm_names:
+        return {}
+    from sqlalchemy import func
+
+    subq = (
+        db.query(BackupLog.vm_name, func.max(BackupLog.id).label("max_id"))
+        .filter(BackupLog.vm_name.in_(vm_names))
+        .group_by(BackupLog.vm_name)
+        .subquery()
+    )
+    rows = (
+        db.query(BackupLog.vm_name, BackupLog.message)
+        .join(subq, BackupLog.id == subq.c.max_id)
+        .all()
+    )
+    return {name: msg for name, msg in rows}
+
+
+def vm_to_dict(vm, last_backup_message=None):
     return {
         "id": vm.id,
         "vm_name": vm.vm_name,
@@ -370,6 +390,7 @@ def vm_to_dict(vm):
         "cbt_enabled": getattr(vm, "cbt_enabled", True),
         "host_name": vm.esxi_host.name if vm.esxi_host else "",
         "last_secondary_copy_status": getattr(vm, "last_secondary_copy_status", None) or "none",
+        "last_backup_message": last_backup_message,
     }
 
 
@@ -523,6 +544,7 @@ def get_vm_chain(db, vm_name):
 
 def job_progress(db):
     vms = db.query(VM).all()
+    messages = latest_backup_messages(db, [v.vm_name for v in vms if (v.last_status or "") == "Failed"])
     return {
         vm.id: {
             "progress": vm.progress or 0,
@@ -531,6 +553,8 @@ def job_progress(db):
             "secondary_copy_status": getattr(vm, "last_secondary_copy_status", None) or "none",
             "last_status": vm.last_status or "Never",
             "last_backup_ts": vm.last_backup.timestamp() if vm.last_backup else 0,
+            "is_running": _vm_is_running(vm),
+            "last_backup_message": messages.get(vm.vm_name),
         }
         for vm in vms
     }
@@ -679,13 +703,33 @@ def _format_bytes(num_bytes):
 
 
 def _vm_is_running(vm):
+    """True only when a backup is genuinely in progress (not stale/hung state)."""
     action = (vm.current_action or "").strip()
-    if action in ("PENDING_RUN", "PENDING_STOP"):
+    if not action:
+        return False
+    if action in ("PENDING_RUN", "PENDING_STOP") or action.startswith("PENDING_"):
         return True
-    if action:
-        return True
+    for prefix in (
+        "Queued",
+        "Preflight checks",
+        "CBT backup",
+        "Backing up VM",
+        "Fallback:",
+        "Creating backup snapshot",
+        "Waiting ",
+        "Streaming disk",
+        "Secondary copy",
+        "Cleaning up",
+        "Shutting down VM",
+        "⚡ Powering on",
+    ):
+        if action.startswith(prefix):
+            return True
     progress = vm.progress or 0
-    return 0 < progress < 100
+    speed = getattr(vm, "speed_mbps", 0) or 0
+    if action.startswith("Backing up..."):
+        return speed > 0 and progress < 100
+    return speed > 0 and 0 < progress < 100
 
 
 def _storage_path_label(config):
@@ -829,6 +873,7 @@ def get_overview(db):
                 "severity": "error",
                 "last_status": vm.last_status,
                 "last_backup": last_backup_iso,
+                "message": latest_backup_messages(db, [vm.vm_name]).get(vm.vm_name),
             })
         elif vm.is_job_active and (not vm.last_backup or vm.last_backup < stale_cutoff):
             attention.append({

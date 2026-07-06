@@ -264,6 +264,7 @@ class VmResponse(BaseModel):
     cbt_enabled: bool = True
     host_name: str = ""
     last_secondary_copy_status: str = "none"
+    last_backup_message: Optional[str] = None
 
 
 class SyncResult(BaseModel):
@@ -379,6 +380,7 @@ class OverviewAttentionItem(BaseModel):
     severity: str  # error | warning | info
     last_status: str
     last_backup: Optional[str] = None
+    message: Optional[str] = None
 
 
 class OverviewResponse(BaseModel):

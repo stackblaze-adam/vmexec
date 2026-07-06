@@ -32,6 +32,31 @@ class TestCbtCore(unittest.TestCase):
         take, _ = cbt_core.should_take_full_backup(config, vm, chain, storage)
         self.assertTrue(take)
 
+    def test_query_changed_areas_pagination(self):
+        vm = MagicMock()
+        first = SimpleNamespace(
+            changedArea=[SimpleNamespace(start=0, length=4096)],
+            length=4096,
+            startOffset=0,
+        )
+        second = SimpleNamespace(changedArea=[], length=0, startOffset=4096)
+        vm.QueryChangedDiskAreas.side_effect = [first, second]
+        snap = MagicMock()
+        areas = cbt_core.query_changed_areas(vm, snap, 2000, "change-1", 8192)
+        self.assertEqual(areas, [(0, 4096)])
+        vm.QueryChangedDiskAreas.assert_any_call(
+            snapshot=snap,
+            deviceKey=2000,
+            startOffset=0,
+            changeId="change-1",
+        )
+        vm.QueryChangedDiskAreas.assert_any_call(
+            snapshot=snap,
+            deviceKey=2000,
+            startOffset=4096,
+            changeId="change-1",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

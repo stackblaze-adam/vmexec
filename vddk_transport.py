@@ -12,6 +12,7 @@ import shutil
 import socket
 import ssl
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -110,15 +111,26 @@ def get_server_thumbprint(host, port=443):
     return thumbprint
 
 
+def _file_bytes_written(path):
+    """Actual bytes on disk (handles sparse VMDK files correctly)."""
+    try:
+        st = os.stat(path)
+        return st.st_blocks * 512
+    except OSError:
+        return 0
+
+
 def _stream_disk_via_nbdcopy(
     cmd_prefix,
     dest_path,
     timeout_secs=7200,
+    stall_secs=120,
     capacity_bytes=None,
     progress_callback=None,
     progress_base=0,
     progress_total=100,
     speed_callback=None,
+    action_callback=None,
     is_cancelled_func=None,
 ):
     """Run nbdkit with nbdcopy to write a flat disk image to dest_path."""
@@ -129,8 +141,10 @@ def _stream_disk_via_nbdcopy(
         raise VddkNotAvailableError("nbdcopy not found in PATH (install libnbd-bin)")
 
     os.makedirs(os.path.dirname(dest_path) or ".", exist_ok=True)
-    run_cmd = cmd_prefix + ["--run", f'{nbdcopy} "$uri" "{dest_path}"']
+    run_cmd = cmd_prefix + ["--run", f'{nbdcopy} --no-extents "$uri" "{dest_path}"']
     log_info(f"[NBD] Streaming disk → {dest_path}")
+    if action_callback:
+        action_callback("Streaming disk via NBD…")
     proc = subprocess.Popen(
         run_cmd,
         stdout=subprocess.PIPE,
@@ -139,40 +153,60 @@ def _stream_disk_via_nbdcopy(
     )
     start = time.time()
     last_size = 0
+    last_growth = start
     last_speed_t = start
+
+    def _abort(msg):
+        proc.kill()
+        try:
+            stdout, stderr = proc.communicate(timeout=30)
+        except Exception:
+            stdout, stderr = "", ""
+        err = (stderr or stdout or "").strip()[:2000]
+        raise RuntimeError(f"{msg}. {err}" if err else msg)
+
     try:
         while proc.poll() is None:
             if is_cancelled_func and is_cancelled_func():
-                proc.kill()
-                proc.wait(timeout=30)
-                raise RuntimeError("Backup cancelled by user")
+                _abort("Backup cancelled by user")
             if time.time() - start > timeout_secs:
-                proc.kill()
-                proc.wait(timeout=30)
-                raise RuntimeError(f"nbdcopy timed out after {timeout_secs}s")
+                _abort(f"nbdcopy timed out after {timeout_secs}s")
             time.sleep(1.5)
-            if not os.path.isfile(dest_path):
-                continue
-            size = os.path.getsize(dest_path)
             now = time.time()
+            if not os.path.isfile(dest_path):
+                if now - last_growth > stall_secs:
+                    _abort(f"nbdcopy stalled: no output file after {stall_secs}s")
+                continue
+            size = _file_bytes_written(dest_path)
+            if size > last_size:
+                last_growth = now
+            elif now - last_growth > stall_secs:
+                _abort(
+                    f"nbdcopy stalled: no data written for {stall_secs}s"
+                    if size == 0
+                    else f"nbdcopy stalled: no progress for {stall_secs}s at {size // (1024 * 1024)} MB"
+                )
             dt = now - last_speed_t
-            if dt >= 1.5 and speed_callback and size >= last_size:
+            if dt >= 1.5 and speed_callback and size > last_size:
                 mbps = (size - last_size) / dt / (1024 * 1024)
-                if mbps >= 0:
+                if mbps > 0:
                     speed_callback(round(mbps, 1))
                 last_size = size
                 last_speed_t = now
-            if capacity_bytes and capacity_bytes > 0 and progress_callback:
+            if capacity_bytes and capacity_bytes > 0 and size > 0 and progress_callback:
                 pct = progress_base + int((size / capacity_bytes) * progress_total)
                 progress_callback(min(pct, progress_base + max(progress_total - 1, 0)))
     finally:
-        stdout, stderr = proc.communicate()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=30)
+    stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         err = (stderr or stdout or "").strip()[:2000]
         raise RuntimeError(f"nbdcopy failed (exit {proc.returncode}): {err}")
     if progress_callback:
         progress_callback(min(progress_base + progress_total, 99))
-    return os.path.getsize(dest_path) if os.path.isfile(dest_path) else 0
+    return _file_bytes_written(dest_path) if os.path.isfile(dest_path) else 0
 
 
 def _resolve_local_dest(storage, dest_rel_path):
@@ -207,6 +241,7 @@ def stream_snapshot_disk(
     progress_base=0,
     progress_total=100,
     speed_callback=None,
+    action_callback=None,
 ):
     """
     Stream one snapshot-backed disk descriptor to storage via NBD/VDDK.
@@ -253,8 +288,6 @@ def stream_snapshot_disk(
                 f"disk={disk_ds_path}"
             )
             try:
-                if progress_callback:
-                    progress_callback(progress_base)
                 capacity = disk.get("capacity_bytes") if isinstance(disk, dict) else None
                 nbytes = _stream_disk_via_nbdcopy(
                     cmd,
@@ -264,6 +297,7 @@ def stream_snapshot_disk(
                     progress_base=progress_base,
                     progress_total=progress_total,
                     speed_callback=speed_callback,
+                    action_callback=action_callback,
                     is_cancelled_func=is_cancelled_func,
                 )
                 if progress_callback:
@@ -295,6 +329,7 @@ def export_live_nbd(
     connection_type=vsphere_context.CONN_AUTO,
     progress_callback=None,
     speed_callback=None,
+    action_callback=None,
     is_cancelled_func=None,
     create_snapshot_func=None,
     remove_snapshot_func=None,
@@ -318,8 +353,8 @@ def export_live_nbd(
     files_downloaded = []
 
     try:
-        if progress_callback:
-            progress_callback(2)
+        if action_callback:
+            action_callback("Creating backup snapshot…")
         snap_obj, snap_name = create_snapshot_func(si, vm_name)
         if not snap_obj:
             return False, f"Snapshot creation failed: {snap_name}"
@@ -332,10 +367,9 @@ def export_live_nbd(
                 return False, f"Cannot resolve snapshot moRef for {snap_name}"
 
         log_info(f"[NBD] Waiting {SNAPSHOT_SETTLE_SECS}s for snapshot to settle...")
+        if action_callback:
+            action_callback(f"Waiting {SNAPSHOT_SETTLE_SECS}s for snapshot to settle…")
         time.sleep(SNAPSHOT_SETTLE_SECS)
-
-        if progress_callback:
-            progress_callback(5)
 
         vm = vsphere_context.find_vm_by_name(si, vm_name)
         _, disk_descriptors, _, _ = _collect_vm_disk_layout(vm)
@@ -381,6 +415,7 @@ def export_live_nbd(
                 progress_base=step_base + 2,
                 progress_total=max(step_end - step_base - 2, 1),
                 speed_callback=speed_callback,
+                action_callback=action_callback,
             )
             files_downloaded.append(flat_basename)
 
@@ -426,6 +461,156 @@ def export_live_nbd(
                 log_error(f"[NBD] Snapshot cleanup error: {ce}")
 
 
+def _python313():
+    """Debian python3 (matches python3-libnbd); worker app is 3.11."""
+    return "/usr/bin/python3" if os.path.isfile("/usr/bin/python3") else sys.executable
+
+
+def _wait_for_unix_socket(path, proc, err_path, timeout_secs=60):
+    """Wait for nbdkit's UNIX socket; raise with nbdkit stderr if it dies first."""
+    deadline = time.time() + timeout_secs
+    while time.time() < deadline:
+        if os.path.exists(path):
+            return
+        if proc.poll() is not None:
+            break
+        time.sleep(0.2)
+    err = ""
+    try:
+        with open(err_path, "r", errors="replace") as f:
+            err = f.read()[-800:]
+    except OSError:
+        pass
+    raise RuntimeError(f"nbdkit failed to start extent reader. {err}".strip())
+
+
+# Reader runs under system python3 (has python3-libnbd); connects to the open
+# nbdkit UNIX socket and streams framed (offset,len,data) for each area.
+_EXTENT_READER_SRC = (
+    "import json, nbd, struct, sys\n"
+    "sock = sys.argv[1]\n"
+    "areas = json.loads(open(sys.argv[2]).read())\n"
+    "h = nbd.NBD()\n"
+    "h.connect_uri('nbd+unix://?socket=' + sock)\n"
+    "out = sys.stdout.buffer\n"
+    "for start, length in areas:\n"
+    "    data = h.pread(length, start)\n"
+    "    out.write(struct.pack('>Q', start))\n"
+    "    out.write(struct.pack('>Q', len(data)))\n"
+    "    out.write(data)\n"
+    "out.flush()\n"
+)
+
+
+def read_snapshot_extents(
+    si,
+    vm,
+    snap_obj,
+    disk,
+    areas,
+    server_host,
+    host_user,
+    host_password,
+    config=None,
+    connection_type=vsphere_context.CONN_AUTO,
+):
+    """Read (offset, length) areas from a snapshot disk via one open nbdkit VDDK
+    session on a UNIX socket (single reader process, no multi-connection)."""
+    if not is_available(config):
+        raise VddkNotAvailableError(availability_message(config))
+    ensure_vddk_runtime_dirs()
+    conn_type = vsphere_context.resolve_connection_type(si, connection_type)
+    candidates = vsphere_context.vddk_disk_open_candidates(disk, conn_type)
+    filtered = [(int(s), int(l)) for s, l in areas if int(l) > 0]
+    if not filtered:
+        return []
+
+    import json
+    import struct
+
+    last_err = None
+    for disk_ds_path in candidates:
+        pw_path = script_path = areas_path = sock = err_path = None
+        proc = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, prefix="vddk_pw_") as pw_file:
+                pw_file.write(host_password)
+                pw_path = pw_file.name
+            cmd, _ = vsphere_context.build_nbdkit_vddk_cmd(
+                si=si,
+                vm=vm,
+                snap_obj=snap_obj,
+                disk_ds_path=disk_ds_path,
+                server_host=server_host,
+                user=host_user,
+                password_file=pw_path,
+                thumbprint=get_server_thumbprint(server_host),
+                libdir=get_vddk_libdir(config),
+                stored_type=connection_type,
+            )
+            # Serve on a UNIX socket instead of --run; disk path is the last arg.
+            sock = os.path.join(
+                tempfile.gettempdir(),
+                f"nbdkit_ext_{os.getpid()}_{int(time.time() * 1000)}.sock",
+            )
+            run_cmd = cmd[:-1] + ["-U", sock, cmd[-1]]
+            log_info(
+                f"[NBD] CBT extent read via {vsphere_context.connection_label(conn_type)}: "
+                f"disk={disk_ds_path} areas={len(filtered)}"
+            )
+            # nbdkit -v is chatty; send its stderr to a file so it can't block.
+            err_fd, err_path = tempfile.mkstemp(prefix="nbdkit_err_")
+            proc = subprocess.Popen(run_cmd, stdout=subprocess.DEVNULL, stderr=err_fd)
+            os.close(err_fd)
+            _wait_for_unix_socket(sock, proc, err_path)
+
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as sf:
+                sf.write(_EXTENT_READER_SRC)
+                script_path = sf.name
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as af:
+                json.dump(filtered, af)
+                areas_path = af.name
+
+            reader = subprocess.run(
+                [_python313(), script_path, sock, areas_path],
+                capture_output=True, timeout=7200,
+            )
+            if reader.returncode != 0:
+                err = (reader.stderr or b"").decode("utf-8", errors="replace")[-800:]
+                raise RuntimeError(err or f"extent reader exit {reader.returncode}")
+
+            buf = reader.stdout
+            extents = []
+            pos = 0
+            while pos + 16 <= len(buf):
+                start, length = struct.unpack_from(">QQ", buf, pos)
+                pos += 16
+                extents.append((start, buf[pos:pos + length]))
+                pos += length
+            if len(extents) != len(filtered):
+                raise RuntimeError(
+                    f"extent count mismatch: expected {len(filtered)}, got {len(extents)}"
+                )
+            return extents
+        except Exception as e:
+            last_err = e
+            log_warn(f"[NBD] CBT extent read failed for {disk_ds_path}: {str(e)[:300]}")
+        finally:
+            if proc and proc.poll() is None:
+                proc.kill()
+                try:
+                    proc.wait(timeout=10)
+                except Exception:
+                    pass
+            for path in (pw_path, script_path, areas_path, sock, err_path):
+                if path:
+                    try:
+                        os.unlink(path)
+                    except OSError:
+                        pass
+    raise RuntimeError(last_err or "VDDK extent read failed for all disk candidates")
+
+
 def read_snapshot_extent(
     si,
     vm,
@@ -440,49 +625,8 @@ def read_snapshot_extent(
     connection_type=vsphere_context.CONN_AUTO,
 ):
     """Read a byte range from a snapshot-backed disk via NBD/VDDK."""
-    if not is_available(config):
-        raise VddkNotAvailableError(availability_message(config))
-
-    ensure_vddk_runtime_dirs()
-    libdir = get_vddk_libdir(config)
-    thumbprint = get_server_thumbprint(server_host)
-    conn_type = vsphere_context.resolve_connection_type(si, connection_type)
-    candidates = vsphere_context.vddk_disk_open_candidates(disk, conn_type)
-
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, prefix="vddk_pw_") as pw_file:
-        pw_file.write(host_password)
-        pw_path = pw_file.name
-
-    nbdsh = shutil.which("nbdsh")
-    if not nbdsh:
-        os.unlink(pw_path)
-        raise VddkNotAvailableError("nbdsh not found in PATH (install libnbd-bin)")
-
-    last_err = None
-    try:
-        for disk_ds_path in candidates:
-            cmd, _ = vsphere_context.build_nbdkit_vddk_cmd(
-                si=si,
-                vm=vm,
-                snap_obj=snap_obj,
-                disk_ds_path=disk_ds_path,
-                server_host=server_host,
-                user=host_user,
-                password_file=pw_path,
-                thumbprint=thumbprint,
-                libdir=libdir,
-                stored_type=connection_type,
-            )
-            script = f"import sys; sys.stdout.buffer.write(h.pread({int(length)}, {int(offset)}))"
-            run_cmd = cmd + ["--run", f'{nbdsh} -c "{script}"']
-            proc = subprocess.run(run_cmd, capture_output=True, timeout=7200)
-            if proc.returncode == 0:
-                return proc.stdout
-            last_err = (proc.stderr or proc.stdout or b"").decode("utf-8", errors="replace")[:500]
-            log_warn(f"[NBD] extent read failed for {disk_ds_path}: {last_err}")
-        raise RuntimeError(last_err or "VDDK extent read failed for all disk candidates")
-    finally:
-        try:
-            os.unlink(pw_path)
-        except OSError:
-            pass
+    areas = read_snapshot_extents(
+        si, vm, snap_obj, disk, [(offset, length)],
+        server_host, host_user, host_password, config, connection_type,
+    )
+    return areas[0][1] if areas else b""

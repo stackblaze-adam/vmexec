@@ -313,36 +313,122 @@ def _handle_consolidation(si, vm_name, timeout_mins=15):
 
 
 # ---------------------------------------------------------------------------
-#  Preflight: Remove Stale Snapshots
+#  Orphaned backup snapshot cleanup (VMBACKUP_TEMP_*)
 # ---------------------------------------------------------------------------
-def _remove_stale_snapshots(si, vm_name, timeout_mins=10):
-    """Removes any VMBACKUP_TEMP_ snapshots."""
+VMBACKUP_SNAP_PREFIX = "VMBACKUP_TEMP_"
+
+
+def _find_backup_snapshot_nodes(tree):
+    """Return (name, snapshot_mo) pairs for all VMBACKUP_TEMP_* nodes in the tree."""
+    out = []
+    for node in tree or []:
+        if node.name.startswith(VMBACKUP_SNAP_PREFIX):
+            out.append((node.name, node.snapshot))
+        out.extend(_find_backup_snapshot_nodes(node.childSnapshotList))
+    return out
+
+
+def _backup_snapshot_age_secs(name):
+    """Age in seconds from VMBACKUP_TEMP_YYYYMMDD_HHMMSS name, or None if not our prefix."""
+    if not name.startswith(VMBACKUP_SNAP_PREFIX):
+        return None
+    suffix = name[len(VMBACKUP_SNAP_PREFIX):]
+    try:
+        created = datetime.datetime.strptime(suffix, "%Y%m%d_%H%M%S")
+        return (datetime.datetime.now() - created).total_seconds()
+    except ValueError:
+        return float("inf")
+
+
+def remove_orphaned_backup_snapshots(
+    si,
+    vm_name,
+    timeout_mins=10,
+    min_age_secs=0,
+    log_prefix="[SNAPSHOT]",
+):
+    """
+    Remove VMBACKUP_TEMP_* snapshots left by interrupted backups.
+
+    min_age_secs: only remove snapshots at least this old (safety for in-flight jobs).
+    Returns the number of snapshots removed.
+    """
     vm = _get_vm(si, vm_name)
     if not vm or not vm.snapshot:
-        return True
+        return 0
 
-    def find_backup_snaps(tree):
-        out = []
-        for s in tree:
-            if s.name.startswith("VMBACKUP_TEMP_"):
-                out.append(s.snapshot)
-            out.extend(find_backup_snaps(s.childSnapshotList))
-        return out
-
-    snaps = find_backup_snaps(vm.snapshot.rootSnapshotList)
-    for snap in snaps:
-        log_info(f"[PREFLIGHT] Removing stale snapshot for {vm_name}...")
+    candidates = _find_backup_snapshot_nodes(vm.snapshot.rootSnapshotList)
+    removed = 0
+    for name, snap in candidates:
+        age = _backup_snapshot_age_secs(name)
+        if age is not None and age < min_age_secs:
+            continue
+        log_info(f"{log_prefix} Removing orphaned snapshot {name} for {vm_name}...")
         task = snap.RemoveSnapshot_Task(removeChildren=False)
         start = time.time()
         while task.info.state not in [vim.TaskInfo.State.success,
                                       vim.TaskInfo.State.error]:
             if (time.time() - start) > (timeout_mins * 60):
-                log_error(f"[PREFLIGHT] Snapshot removal timeout for {vm_name}")
-                return False
+                log_error(f"{log_prefix} Snapshot removal timeout for {vm_name} ({name})")
+                return removed
             time.sleep(2)
         if task.info.state == vim.TaskInfo.State.error:
-            log_error(f"[PREFLIGHT] Snapshot removal failed: {task.info.error}")
-            return False
+            log_error(f"{log_prefix} Snapshot removal failed for {name}: {task.info.error}")
+            continue
+        log_info(f"{log_prefix} Removed orphaned snapshot {name} for {vm_name}")
+        removed += 1
+    return removed
+
+
+def cleanup_orphaned_snapshots_all(skip_vm_ids=None, min_age_secs=120):
+    """
+    Scan all registered VMs and remove orphaned VMBACKUP_TEMP_* snapshots.
+    skip_vm_ids: VM IDs with an active backup (never touch their snapshots).
+    Returns total snapshots removed.
+    """
+    from models import SessionLocal, VM
+    import esxi_handler
+
+    skip_vm_ids = set(skip_vm_ids or ())
+    db = SessionLocal()
+    host_sessions = {}
+    total_removed = 0
+    try:
+        vms = db.query(VM).filter(VM.is_selected == True).all()
+        for vm in vms:
+            if vm.id in skip_vm_ids or not vm.esxi_host:
+                continue
+            host = vm.esxi_host
+            if host.id not in host_sessions:
+                si = esxi_handler.connect_esxi(host.host_ip, host.username, host.password)
+                if not si:
+                    log_warn(f"[SNAPSHOT] Orphan sweep: cannot connect to host {host.name}")
+                    continue
+                host_sessions[host.id] = si
+            removed = remove_orphaned_backup_snapshots(
+                host_sessions[host.id],
+                vm.vm_name,
+                timeout_mins=30,
+                min_age_secs=min_age_secs,
+            )
+            total_removed += removed
+    finally:
+        for si in host_sessions.values():
+            try:
+                esxi_handler.Disconnect(si)
+            except Exception:
+                pass
+        db.close()
+    return total_removed
+
+
+def _remove_stale_snapshots(si, vm_name, timeout_mins=10):
+    """Preflight: remove all orphaned backup snapshots before starting a new run."""
+    removed = remove_orphaned_backup_snapshots(
+        si, vm_name, timeout_mins=timeout_mins, min_age_secs=0, log_prefix="[PREFLIGHT]"
+    )
+    if removed:
+        log_info(f"[PREFLIGHT] Removed {removed} orphaned snapshot(s) for {vm_name}")
     return True
 
 
@@ -677,6 +763,7 @@ def _export_live_stream(
     config=None, host_ip=None, host_user=None, host_password=None,
     progress_callback=None, speed_callback=None, is_cancelled_func=None,
     transport="nbd", connection_type=vsphere_context.CONN_AUTO,
+    action_callback=None,
 ):
     """
     Modern live backup: VDDK/NBD → NFC ExportSnapshot (vCenter) → cross-datastore staged stream.
@@ -698,6 +785,7 @@ def _export_live_stream(
                 server_host=host_ip, host_user=host_user, host_password=host_password, config=config,
                 connection_type=connection_type,
                 progress_callback=progress_callback, speed_callback=speed_callback,
+                action_callback=action_callback,
                 is_cancelled_func=is_cancelled_func,
                 create_snapshot_func=live_snap,
                 remove_snapshot_func=_remove_backup_snapshot,
@@ -1259,6 +1347,7 @@ def export_vm_native(si, vm_name, storage, dest_rel_dir, progress_callback=None,
                     progress_callback=progress_callback, speed_callback=speed_callback,
                     is_cancelled_func=is_cancelled_func, transport=transport,
                     connection_type=kwargs.get("connection_type", vsphere_context.CONN_AUTO),
+                    action_callback=kwargs.get("action_callback"),
                 )
                 if not ok:
                     raise Exception(result_msg)

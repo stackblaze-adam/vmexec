@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nbdkit \
     libnbd0 \
     libnbd-bin \
+    python3-libnbd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=nbdkit-vddk-build /src/nbdkit/plugins/vddk/.libs/nbdkit-vddk-plugin.so \

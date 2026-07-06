@@ -136,15 +136,12 @@ def vddk_base_disk_path(disk):
 def vddk_disk_open_candidates(disk, conn_type=CONN_AUTO):
     """
     Disk paths to try with VDDK ConnectEx + snapshot moRef.
-    Standalone ESXi: prefer post-snapshot active descriptor, then base.
-    vCenter: prefer base + snapshot chain traversal, then active delta.
+    Prefer base descriptor first (VMware VDDK guidance for snapshot-backed opens),
+    then the active delta descriptor as fallback.
     """
     active = disk["ds_path"]
     base = vddk_base_disk_path(disk)
-    if conn_type == CONN_STANDALONE:
-        order = [active, base]
-    else:
-        order = [base, active]
+    order = [base, active]
     seen = set()
     out = []
     for p in order:
@@ -172,10 +169,14 @@ def build_nbdkit_vddk_cmd(
 
     Standalone ESXi: vm=moref=107, snapshot=107-snapshot-19
     vCenter:         vm=moref=vm-16, snapshot=snapshot-12345, optional cookie=
+
+    --filter=noextents avoids unreliable VDDK QueryAllocatedBlocks metadata on
+    seSparse / snapshot-chain disks that can cause nbdcopy to stall mid-stream.
     """
     cmd = [
         "nbdkit",
         "-v",
+        "--filter=noextents",
         "-r",
         "vddk",
         f"libdir={libdir}",
@@ -186,6 +187,7 @@ def build_nbdkit_vddk_cmd(
         f"vm=moref={get_vm_moref(vm)}",
         f"snapshot={get_snapshot_moref(snap_obj)}",
         f"transports={transports}",
+        "unbuffered=true",
         disk_ds_path,
     ]
     conn_type = resolve_connection_type(si, stored_type)

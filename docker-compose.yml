@@ -7,8 +7,7 @@ services:
     container_name: novabak_web
     restart: unless-stopped
     ports:
-      - "443:8000"   # HTTPS
-      - "8000:8000"  # Direct access (also HTTPS)
+      - "127.0.0.1:8000:8000"  # Caddy reverse-proxies :443 → here
     volumes:
       # Persistent data: SQLite DB + logs
       - novabak_data:/app/data

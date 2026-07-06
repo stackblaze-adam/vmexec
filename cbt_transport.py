@@ -158,17 +158,37 @@ def export_cbt_backup(
                     )
                 else:
                     import vddk_transport
-                    vddk_transport.stream_snapshot_disk(
-                        si, vm, snap_obj, disk,
-                        host_ip, host_user, host_password,
-                        storage, flat_rel, config=config,
-                        connection_type=connection_type,
-                        is_cancelled_func=is_cancelled_func,
-                        progress_callback=progress_callback,
-                        progress_base=step_base + 2,
-                        progress_total=max(step_end - step_base - 2, 1),
-                        speed_callback=speed_callback,
-                    )
+                    try:
+                        vddk_transport.stream_snapshot_disk(
+                            si, vm, snap_obj, disk,
+                            host_ip, host_user, host_password,
+                            storage, flat_rel, config=config,
+                            connection_type=connection_type,
+                            is_cancelled_func=is_cancelled_func,
+                            progress_callback=progress_callback,
+                            progress_base=step_base + 2,
+                            progress_total=max(step_end - step_base - 2, 1),
+                            speed_callback=speed_callback,
+                        )
+                    except Exception as nbd_err:
+                        if vsphere_context.supports_nfc_export(si, connection_type):
+                            log_warn(
+                                f"[CBT] NBD full disk failed ({str(nbd_err)[:200]}); "
+                                "trying NFC ExportSnapshot"
+                            )
+                            import nfc_transport
+                            nfc_transport.stream_snapshot_disk_nfc(
+                                si, snap_obj, disk, storage, flat_rel,
+                                disk_index=idx,
+                                progress_callback=progress_callback,
+                                progress_base=step_base + 2,
+                                progress_total=max(step_end - step_base - 2, 1),
+                                speed_callback=speed_callback,
+                                is_cancelled_func=is_cancelled_func,
+                                connection_type=connection_type,
+                            )
+                        else:
+                            raise
                 disk_manifest_entries.append(bm.build_disk_entry(
                     device_key, disk_basename, flat_basename, capacity,
                     change_id, "full",
@@ -186,7 +206,7 @@ def export_cbt_backup(
                 prev_disk = _find_prev_disk_entry(storage, vm_name, parent_id, device_key)
                 prev_change_id = prev_disk.get("change_id") if prev_disk else "*"
                 areas = cbt_core.query_changed_areas(
-                    si, snap_obj, device_key, prev_change_id, capacity,
+                    vm, snap_obj, device_key, prev_change_id, capacity,
                 )
                 log_info(
                     f"[CBT] Incremental disk {idx + 1}/{total_disks}: "
@@ -294,23 +314,27 @@ def _capture_changed_extents(
     connection_type, download_http_range_func, is_cancelled_func,
 ):
     """Read changed block ranges and return list of (offset, data) for delta file."""
-    extents = []
-    for start, length in areas:
-        if is_cancelled_func and is_cancelled_func():
-            raise RuntimeError("Backup cancelled by user")
-        if length <= 0:
-            continue
-        if is_off:
+    if is_off:
+        extents = []
+        for start, length in areas:
+            if is_cancelled_func and is_cancelled_func():
+                raise RuntimeError("Backup cancelled by user")
+            if length <= 0:
+                continue
             data = _read_range_http(
                 si, disk, start, length, download_http_range_func, vm, connection_type,
             )
-        else:
-            data = _read_range_nbd(
-                si, vm, snap_obj, disk, start, length,
-                host_ip, host_user, host_password, config, connection_type,
-            )
-        extents.append((start, data))
-    return extents
+            extents.append((start, data))
+        return extents
+
+    import vddk_transport
+    if is_cancelled_func and is_cancelled_func():
+        raise RuntimeError("Backup cancelled by user")
+    filtered = [(int(s), int(l)) for s, l in areas if int(l) > 0]
+    return vddk_transport.read_snapshot_extents(
+        si, vm, snap_obj, disk, filtered,
+        host_ip, host_user, host_password, config, connection_type,
+    )
 
 
 def _read_range_http(si, disk, start, length, download_http_range_func, vm, connection_type):

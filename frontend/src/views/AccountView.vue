@@ -1,39 +1,46 @@
 <template>
   <div>
     <h1 class="text-2xl font-bold mb-6">Account</h1>
-    <div class="settings-layout">
+    <div class="flex gap-6 items-start max-md:flex-col">
       <nav class="flex flex-col gap-1 min-w-[160px]">
-        <RouterLink to="/account/profile" class="settings-nav-item px-3 py-2 text-sm rounded">Profile</RouterLink>
-        <RouterLink v-if="auth.isAdmin" to="/account/api" class="settings-nav-item px-3 py-2 text-sm rounded">API Keys</RouterLink>
+        <RouterLink
+          to="/account/profile"
+          class="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium text-muted rounded-md no-underline transition-[color,background] duration-150 hover:text-main hover:bg-btn-sec-hover router-link-active:text-brand router-link-active:bg-brand/10 router-link-active:font-semibold"
+        >Profile</RouterLink>
+        <RouterLink
+          v-if="auth.isAdmin"
+          to="/account/api"
+          class="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium text-muted rounded-md no-underline transition-[color,background] duration-150 hover:text-main hover:bg-btn-sec-hover router-link-active:text-brand router-link-active:bg-brand/10 router-link-active:font-semibold"
+        >API Keys</RouterLink>
       </nav>
       <div class="flex-1">
-        <div v-if="panel === 'profile'" class="card p-6 space-y-4 max-w-lg">
+        <div v-if="panel === 'profile'" class="rounded-lg border border-border bg-card shadow-card transition-all duration-300 p-6 space-y-4 max-w-lg">
           <h2 class="font-semibold">Profile</h2>
           <div>
-            <label class="input-label">Email</label>
+            <label class="block text-xs font-semibold uppercase text-muted mb-1">Email</label>
             <input v-model="profile.email" class="w-full py-2 px-3 text-sm" />
           </div>
           <div>
-            <label class="input-label">Notifications</label>
+            <label class="block text-xs font-semibold uppercase text-muted mb-1">Notifications</label>
             <div v-for="ev in auth.notifyEvents" :key="ev[0]" class="flex items-center gap-2 text-sm py-1">
               <input type="checkbox" :checked="subs.includes(ev[0])" @change="toggleSub(ev[0], $event.target.checked)" />
               {{ ev[1] }}
             </div>
           </div>
-          <button type="button" class="btn-primary px-4 py-2 text-sm" @click="save">Save profile</button>
-          <p v-if="msg" class="text-sm" style="color: #34d399">{{ msg }}</p>
+          <button type="button" class="inline-flex items-center justify-center gap-1.5 rounded-md border-0 bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-55 disabled:cursor-not-allowed transition-[background-color] duration-200" @click="save">Save profile</button>
+          <p v-if="msg" class="text-sm text-emerald-400">{{ msg }}</p>
         </div>
 
-        <div v-else-if="panel === 'api' && auth.isAdmin" class="card p-6">
+        <div v-else-if="panel === 'api' && auth.isAdmin" class="rounded-lg border border-border bg-card shadow-card transition-all duration-300 p-6">
           <div class="flex justify-between mb-4">
             <h2 class="font-semibold">API keys</h2>
-            <button type="button" class="btn-primary px-3 py-1.5 text-sm" @click="createKey">Create key</button>
+            <button type="button" class="inline-flex items-center justify-center gap-1.5 rounded-md border-0 bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-55 disabled:cursor-not-allowed transition-[background-color] duration-200" @click="createKey">Create key</button>
           </div>
-          <div v-for="k in keys" :key="k.id" class="flex justify-between py-2 border-b" style="border-color: var(--border-color)">
-            <span>{{ k.name }} <span class="text-xs" style="color: var(--text-muted)">{{ k.created_at }}</span></span>
-            <button type="button" class="btn-secondary px-2 py-1 text-xs" @click="revoke(k.id)">Revoke</button>
+          <div v-for="k in keys" :key="k.id" class="flex justify-between py-2 border-b border-border">
+            <span>{{ k.name }} <span class="text-xs text-muted">{{ k.created_at }}</span></span>
+            <button type="button" class="inline-flex items-center justify-center gap-1.5 rounded-md border border-btn-sec-border bg-btn-sec px-2 py-1 text-xs text-btn-sec-text hover:bg-btn-sec-hover transition-[background-color] duration-200" @click="revoke(k.id)">Revoke</button>
           </div>
-          <p v-if="newKey" class="text-sm mt-4 p-3 rounded font-mono break-all" style="background: rgba(59,130,246,0.1); color: var(--brand)">{{ newKey }}</p>
+          <p v-if="newKey" class="text-sm mt-4 p-3 rounded font-mono break-all bg-brand/10 text-brand">{{ newKey }}</p>
         </div>
       </div>
     </div>
@@ -92,38 +99,3 @@ async function revoke(id) {
 
 onMounted(load)
 </script>
-
-<style scoped>
-.settings-nav-item { display: block; text-decoration: none; color: var(--text-muted); }
-.settings-nav-item.router-link-active { background: var(--btn-sec-hover); color: var(--brand); font-weight: 600; }
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-1 { flex: 1; }
-.items-center { align-items: center; }
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.mt-4 { margin-top: 1rem; }
-.p-3 { padding: 0.75rem; }
-.p-6 { padding: 1.5rem; }
-.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
-.text-xs { font-size: 0.75rem; }
-.text-sm { font-size: 0.875rem; }
-.text-2xl { font-size: 1.5rem; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-mono { font-family: ui-monospace, monospace; }
-.w-full { width: 100%; }
-.max-w-lg { max-width: 32rem; }
-.min-w-\[160px\] { min-width: 160px; }
-.rounded { border-radius: 0.375rem; }
-.border-b { border-bottom-width: 1px; }
-.break-all { word-break: break-all; }
-.space-y-4 > * + * { margin-top: 1rem; }
-</style>

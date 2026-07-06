@@ -38,10 +38,11 @@ class TestVsphereContext(unittest.TestCase):
             "rel_path": "vyos-02/vyos-02-000001.vmdk",
         }
         standalone = vsphere_context.vddk_disk_open_candidates(disk, vsphere_context.CONN_STANDALONE)
-        self.assertEqual(standalone[0], disk["ds_path"])
-        self.assertEqual(standalone[1], "[ds1] vyos-02/vyos-02.vmdk")
+        self.assertEqual(standalone[0], "[ds1] vyos-02/vyos-02.vmdk")
+        self.assertEqual(standalone[1], disk["ds_path"])
         vcenter = vsphere_context.vddk_disk_open_candidates(disk, vsphere_context.CONN_VCENTER)
         self.assertEqual(vcenter[0], "[ds1] vyos-02/vyos-02.vmdk")
+        self.assertEqual(vcenter[1], disk["ds_path"])
 
     def test_vddk_base_disk_path(self):
         disk = {
@@ -66,6 +67,8 @@ class TestVsphereContext(unittest.TestCase):
         self.assertEqual(conn, vsphere_context.CONN_STANDALONE)
         self.assertIn("vm=moref=107", cmd)
         self.assertIn("snapshot=107-snapshot-19", cmd)
+        self.assertIn("--filter=noextents", cmd)
+        self.assertIn("unbuffered=true", cmd)
         self.assertIn("-r", cmd)
         self.assertNotIn("snapshot=moref=", " ".join(cmd))
         self.assertFalse(any(c.startswith("cookie=") for c in cmd))

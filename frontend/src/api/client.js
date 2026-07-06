@@ -108,8 +108,5 @@ export const logsApi = {
     const q = new URLSearchParams(params).toString()
     return api(`/logs/system?${q}`)
   },
-}
-
-export const maintenanceApi = {
-  snapshotPurge: () => api('/maintenance/snapshot-purge', { method: 'POST' }),
+  backup: (limit = 50) => api(`/logs/backup?limit=${limit}`),
 }

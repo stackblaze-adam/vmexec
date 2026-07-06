@@ -395,7 +395,8 @@ def sync_vms(
 def list_vms(db: Session = Depends(get_db), user: User = Depends(get_api_user)):
     from models import VM
     vms = db.query(VM).order_by(VM.vm_name).all()
-    return [VmResponse(**backup_ops.vm_to_dict(v)) for v in vms]
+    messages = backup_ops.latest_backup_messages(db, [v.vm_name for v in vms])
+    return [VmResponse(**backup_ops.vm_to_dict(v, messages.get(v.vm_name))) for v in vms]
 
 
 @router.patch("/vms/{vm_id}", response_model=VmResponse)
@@ -409,7 +410,7 @@ def patch_vm(
         vm = backup_ops.update_vm_job(db, vm_id, body.model_dump(exclude_unset=True))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return VmResponse(**backup_ops.vm_to_dict(vm))
+    return VmResponse(**backup_ops.vm_to_dict(vm, backup_ops.latest_backup_messages(db, [vm.vm_name]).get(vm.vm_name)))
 
 
 @router.post("/inventory/apply")
@@ -588,43 +589,3 @@ def jobs_progress(db: Session = Depends(get_db), user: User = Depends(get_api_us
 def overview(db: Session = Depends(get_db), user: User = Depends(get_api_user)):
     return OverviewResponse(**backup_ops.get_overview(db))
 
-
-@router.post("/maintenance/snapshot-purge")
-def snapshot_purge(
-    db: Session = Depends(get_db),
-    user: User = Depends(require_api_role("admin")),
-):
-    import threading
-    import esxi_handler
-    import worker as worker_mod
-    from models import SessionLocal
-    import time as time_mod
-
-    def run_global_cleanup():
-        bg_db = SessionLocal()
-        try:
-            vms_bg = bg_db.query(VM).all()
-            host_sis = {}
-            for vm in vms_bg:
-                if not vm.esxi_host:
-                    continue
-                h = vm.esxi_host
-                if h.id not in host_sis:
-                    si = esxi_handler.connect_esxi(h.host_ip, h.username, h.password)
-                    if si:
-                        host_sis[h.id] = si
-                si = host_sis.get(h.id)
-                if si:
-                    esxi_handler.remove_snapshot(si, vm.vm_name)
-            for si in host_sis.values():
-                esxi_handler.Disconnect(si)
-        finally:
-            bg_db.close()
-
-    threading.Thread(target=run_global_cleanup, daemon=True).start()
-    worker_mod.send_event_notification(
-        "snapshot_cleanup",
-        "[VMExec] Snapshot Purge Triggered",
-        f"A global snapshot consolidation was initiated by {user.username} at {time_mod.strftime('%Y-%m-%d %H:%M')}.",
-    )
-    return {"ok": True, "message": "Global snapshot purge started in background"}

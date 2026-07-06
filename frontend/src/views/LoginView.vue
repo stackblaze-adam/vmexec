@@ -1,27 +1,50 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4" style="background: var(--bg-app)">
-    <div class="card w-full max-w-md p-8">
-      <h1 class="text-2xl font-bold mb-2">VMExec</h1>
-      <p class="text-sm mb-6" style="color: var(--text-muted)">Sign in to manage backups</p>
+  <div class="flex min-h-screen items-center justify-center bg-app px-4">
+    <div class="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-card">
+      <h1 class="mb-2 text-2xl font-bold">VMExec</h1>
+      <p class="mb-6 text-sm text-muted">Sign in to manage backups</p>
 
       <form v-if="step === 'password'" @submit.prevent="onLogin">
-        <label class="input-label">Username</label>
-        <input v-model="username" class="w-full mb-4 px-3 py-2" required autocomplete="username" />
-        <label class="input-label">Password</label>
-        <input v-model="password" type="password" class="w-full mb-4 px-3 py-2" required autocomplete="current-password" />
-        <p v-if="error" class="text-sm mb-3" style="color: #f87171">{{ error }}</p>
-        <button type="submit" class="btn-primary w-full py-2 font-semibold" :disabled="auth.loading">
+        <label class="mb-1 block text-xs font-semibold uppercase text-muted">Username</label>
+        <input v-model="username" class="mb-4 w-full px-3 py-2" required autocomplete="username" />
+        <label class="mb-1 block text-xs font-semibold uppercase text-muted">Password</label>
+        <input v-model="password" type="password" class="mb-4 w-full px-3 py-2" required autocomplete="current-password" />
+        <p v-if="error" class="mb-3 text-sm text-red-400">{{ error }}</p>
+        <button
+          type="submit"
+          class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border-0 bg-brand py-2 font-semibold text-white hover:bg-brand-hover disabled:opacity-55"
+          :disabled="auth.loading"
+        >
           {{ auth.loading ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>
 
       <form v-else @submit.prevent="onMfa">
-        <p class="text-sm mb-4" style="color: var(--text-muted)">Enter the code from your authenticator for <strong>{{ auth.mfaPendingUser }}</strong></p>
-        <label class="input-label">Authenticator code</label>
-        <input v-model="mfaCode" class="w-full mb-4 px-3 py-2 font-mono tracking-widest" maxlength="6" required autocomplete="one-time-code" />
-        <p v-if="error" class="text-sm mb-3" style="color: #f87171">{{ error }}</p>
-        <button type="submit" class="btn-primary w-full py-2 font-semibold">Verify</button>
-        <button type="button" class="btn-secondary w-full py-2 mt-2" @click="step = 'password'; error = ''">Back</button>
+        <p class="mb-4 text-sm text-muted">
+          Enter the code from your authenticator for <strong>{{ auth.mfaPendingUser }}</strong>
+        </p>
+        <label class="mb-1 block text-xs font-semibold uppercase text-muted">Authenticator code</label>
+        <input
+          v-model="mfaCode"
+          class="mb-4 w-full px-3 py-2 font-mono tracking-widest"
+          maxlength="6"
+          required
+          autocomplete="one-time-code"
+        />
+        <p v-if="error" class="mb-3 text-sm text-red-400">{{ error }}</p>
+        <button
+          type="submit"
+          class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border-0 bg-brand py-2 font-semibold text-white hover:bg-brand-hover disabled:opacity-55"
+        >
+          Verify
+        </button>
+        <button
+          type="button"
+          class="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-btn-sec-border bg-btn-sec py-2 text-btn-sec-text hover:bg-btn-sec-hover"
+          @click="step = 'password'; error = ''"
+        >
+          Back
+        </button>
       </form>
     </div>
   </div>
@@ -69,27 +92,3 @@ async function onMfa() {
   }
 }
 </script>
-
-<style scoped>
-.min-h-screen { min-height: 100vh; }
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.w-full { width: 100%; }
-.max-w-md { max-width: 28rem; }
-.p-8 { padding: 2rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 0.75rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.mt-2 { margin-top: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.text-2xl { font-size: 1.5rem; }
-.text-sm { font-size: 0.875rem; }
-.font-bold { font-weight: 700; }
-.font-semibold { font-weight: 600; }
-.font-mono { font-family: ui-monospace, monospace; }
-.tracking-widest { letter-spacing: 0.1em; }
-</style>

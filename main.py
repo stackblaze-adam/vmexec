@@ -25,7 +25,7 @@ app = FastAPI(title="VMExec")
 from api.v1.router import router as v1_router
 v1_app = FastAPI(
     title="VMExec API v1",
-    version="1.0.0",
+    version="1.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
 )
@@ -920,48 +920,6 @@ def get_overview(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Unauthorized")
     from services import backup_ops
     return backup_ops.get_overview(db)
-
-@app.post("/cleanup_all_snapshots")
-def cleanup_all_snapshots(request: Request, db: Session = Depends(get_db)):
-    require_auth(request)
-    vms = db.query(VM).all()
-    
-    # We'll do this in a thread because it can take a long time
-    def run_global_cleanup():
-        # Create a fresh session for the background thread
-        from models import SessionLocal
-        bg_db = SessionLocal()
-        try:
-            vms_bg = bg_db.query(VM).all()
-            host_sis = {}
-            for vm in vms_bg:
-                if not vm.esxi_host: continue
-                h = vm.esxi_host
-                if h.id not in host_sis:
-                    si = esxi_handler.connect_esxi(h.host_ip, h.username, h.password)
-                    if si:
-                        host_sis[h.id] = si
-                
-                si = host_sis.get(h.id)
-                if si:
-                    log_info(f"[GLOBAL CLEANUP] Cleaning {vm.vm_name}...")
-                    esxi_handler.remove_snapshot(si, vm.vm_name)
-            
-            for si in host_sis.values():
-                esxi_handler.Disconnect(si)
-            log_info("[GLOBAL CLEANUP] Finished.")
-        finally:
-            bg_db.close()
-
-    thread = threading.Thread(target=run_global_cleanup)
-    thread.start()
-    worker.send_event_notification(
-        "snapshot_cleanup",
-        "[VMExec] Snapshot Purge Triggered",
-        f"A global snapshot consolidation was initiated by a user at {time.strftime('%Y-%m-%d %H:%M')}."
-    )
-    return RedirectResponse(url="/?purge_started=1", status_code=303)
-
 
 @app.get("/api/syslogs")
 def get_syslogs(request: Request, s_lines: int = 100, s_search: str = "", w_lines: int = 100, w_search: str = "", db: Session = Depends(get_db)):

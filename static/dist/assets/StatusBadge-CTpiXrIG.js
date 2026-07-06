@@ -1,1 +1,0 @@
-import{F as e,K as t,O as n,W as r}from"./index-VEzd80pd.js";var i={__name:`StatusBadge`,props:{cls:{type:String,required:!0},label:{type:String,required:!0}},setup(i){return(a,o)=>(e(),n(`span`,{class:r([`status-badge`,i.cls])},t(i.label),3))}};export{i as t};

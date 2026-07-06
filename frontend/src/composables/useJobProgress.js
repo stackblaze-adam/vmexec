@@ -25,7 +25,15 @@ export function useJobProgress(onUpdate) {
 
 export function isJobActive(info) {
   if (!info) return false
-  return info.current_action !== '' || (info.progress > 0 && info.progress < 100)
+  if (typeof info.is_running === 'boolean') return info.is_running
+  const action = (info.current_action || '').trim()
+  if (!action) return false
+  if (/^PENDING_|^Queued/.test(action)) return true
+  if (/^(Preflight|CBT backup|Backing up VM|Fallback:|Creating backup snapshot|Waiting |Streaming disk|Secondary copy|Cleaning up|Shutting down|⚡)/.test(action)) return true
+  if (action.startsWith('Backing up...')) {
+    return (info.speed_mbps || 0) > 0 && (info.progress || 0) < 100
+  }
+  return (info.speed_mbps || 0) > 0 && (info.progress || 0) > 0 && (info.progress || 0) < 100
 }
 
 export function statusBadge(status, active) {

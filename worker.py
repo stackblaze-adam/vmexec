@@ -149,6 +149,8 @@ restore_queue_executor = ThreadPoolExecutor(max_workers=5)
 last_trigger_times = {}  # vm_id -> timestamp
 _cancelled_backups = set()
 _cancel_lock = threading.Lock()
+_active_backup_vm_ids = set()
+_active_backup_lock = threading.Lock()
 
 WAIT_HOST = "Waiting for host slot..."
 WAIT_GLOBAL = "Waiting for worker slot..."
@@ -265,6 +267,12 @@ def clear_backup_cancel(vm_id: int):
 def is_backup_cancelled(vm_id: int) -> bool:
     with _cancel_lock:
         return vm_id in _cancelled_backups
+
+
+def get_active_backup_vm_ids():
+    """VM IDs currently running a backup thread (skip during orphan snapshot sweeps)."""
+    with _active_backup_lock:
+        return set(_active_backup_vm_ids)
 
 
 def queue_backup(vm_id: int):
@@ -385,6 +393,9 @@ def perform_backup(vm_id: int):
     dest_path_info = ""
     poweron_result = None  # None = not attempted, True = success, False = failed
 
+    with _active_backup_lock:
+        _active_backup_vm_ids.add(vm_id)
+
     try:
         timeout_m = config.backup_timeout_mins if hasattr(config, 'backup_timeout_mins') else 15
         use_cbt = getattr(config, "cbt_enabled", True) and getattr(vm, "cbt_enabled", True)
@@ -453,7 +464,17 @@ def perform_backup(vm_id: int):
                 raise BackupCancelled("Backup cancelled by user")
             try:
                 vm.speed_mbps = mbps
-                vm.current_action = f"Backing up... {mbps:.1f} MB/s"
+                if mbps > 0:
+                    vm.current_action = f"Backing up... {mbps:.1f} MB/s"
+                    db.commit()
+            except Exception:
+                pass
+
+        def action_cb(msg):
+            if is_backup_cancelled(vm_id):
+                raise BackupCancelled("Backup cancelled by user")
+            try:
+                vm.current_action = msg
                 db.commit()
             except Exception:
                 pass
@@ -499,6 +520,10 @@ def perform_backup(vm_id: int):
                     dest_rel_dir = cbt_dest
                 if not success:
                     log_warn(f"[CBT] Failed ({result_msg}); falling back to legacy full backup")
+                    vm.progress = 0
+                    vm.speed_mbps = 0.0
+                    vm.current_action = "Fallback: full backup via NBD..."
+                    db.commit()
             else:
                 log_warn("[CBT] S3 storage detected; using legacy full backup")
 
@@ -517,6 +542,7 @@ def perform_backup(vm_id: int):
                 host_user=host.username,
                 host_password=host.password,
                 connection_type=getattr(host, "connection_type", None) or vsphere_context.CONN_AUTO,
+                action_callback=action_cb,
             )
 
         if not success and "cancelled" in (result_msg or "").lower():
@@ -667,6 +693,8 @@ def perform_backup(vm_id: int):
                 log_error(f"[PID {pid}] Power-on step failed for {vm.vm_name}: {e}")
         
         clear_backup_cancel(vm_id)
+        with _active_backup_lock:
+            _active_backup_vm_ids.discard(vm_id)
         esxi_handler.Disconnect(si)
         db.close()
         _release_and_drain(host_id)

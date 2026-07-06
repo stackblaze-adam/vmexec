@@ -125,38 +125,11 @@ def create_snapshot(si, vm_name):
         return None
 
 def remove_snapshot(si, vm_name, timeout_mins=60):
-    """ Consolidates and removes all VMBACKUP_TEMP snapshots for a VM. """
-    content = si.RetrieveContent()
-    vm = _find_vm(si, vm_name)
-    
-    if not vm or not vm.snapshot:
-        return True
-        
-    def find_backup_snapshots(snap_tree):
-        snaps = []
-        for snap in snap_tree:
-            if snap.name.startswith("VMBACKUP_TEMP_"):
-                snaps.append(snap.snapshot)
-            snaps.extend(find_backup_snapshots(snap.childSnapshotList))
-        return snaps
-        
-    backup_snaps = find_backup_snapshots(vm.snapshot.rootSnapshotList)
-    import time
-    for snap_obj in backup_snaps:
-        print(f"Consolidating/Removing backup snapshot for {vm_name}...")
-        task = snap_obj.RemoveSnapshot_Task(removeChildren=False)
-        
-        start_wait = time.time()
-        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
-            if (time.time() - start_wait) > (timeout_mins * 60):
-                print(f"[WARN] Timeout ({timeout_mins}m) reached while waiting for snapshot removal on {vm_name}.")
-                return False
-            time.sleep(2)
-            
-        if task.info.state == vim.TaskInfo.State.error:
-            print(f"Failed to remove snapshot: {task.info.error}")
-            return False
-            
+    """Remove all orphaned VMBACKUP_TEMP_* snapshots for a VM."""
+    import backup_engine
+    backup_engine.remove_orphaned_backup_snapshots(
+        si, vm_name, timeout_mins=timeout_mins, min_age_secs=0,
+    )
     return True
 
 def wait_for_vm_idle(si, vm_name, timeout_mins=15):

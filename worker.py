@@ -877,18 +877,27 @@ def perform_restore(config, target_ip, target_user, target_password, source_ova_
     
     from models import SessionLocal
     def update_job(pct, action=None, status=None, error=None):
-        with SessionLocal() as db:
-            job = db.query(RestoreJob).filter(RestoreJob.id == restore_job_id).first()
-            if job:
-                if pct is not None: job.progress = pct
-                if action: job.current_action = action
-                if status: job.status = status
-                if error: 
-                    job.error_message = error
-                    job.status = "Failed"
-                if status in ["Success", "Failed"]:
-                    job.end_time = datetime.datetime.utcnow()
-                db.commit()
+        # Retry on transient SQLite contention so terminal (Success/Failed)
+        # state is never silently lost, leaving the job stuck "In Progress".
+        for attempt in range(5):
+            try:
+                with SessionLocal() as db:
+                    job = db.query(RestoreJob).filter(RestoreJob.id == restore_job_id).first()
+                    if job:
+                        if pct is not None: job.progress = pct
+                        if action: job.current_action = action
+                        if status: job.status = status
+                        if error:
+                            job.error_message = error
+                            job.status = "Failed"
+                        if job.status in ["Success", "Failed"]:
+                            job.end_time = datetime.datetime.utcnow()
+                        db.commit()
+                return
+            except Exception as e:
+                log_warn(f"[RESTORE] update_job attempt {attempt + 1}/5 failed: {e}")
+                time.sleep(0.5)
+        log_error(f"[RESTORE] update_job permanently failed (pct={pct}, status={status}, error={error})")
 
     log_info(f"[RESTORE] Connecting to target ESXi {target_ip}...")
     si = esxi_handler.connect_esxi(target_ip, target_user, target_password)
@@ -930,6 +939,10 @@ def perform_restore(config, target_ip, target_user, target_password, source_ova_
                 return job.is_cancelled if job else False
 
         log_info(f"[RESTORE] Path resolved: Rel Dir = '{source_rel_dir}'")
+
+        # Materializing a CBT chain into a full disk can take several minutes
+        # with no upload activity; surface it so the UI isn't frozen at 2%.
+        update_job(3, action="Materializing backup chain (this can take several minutes)...")
 
         log_info(f"[RESTORE] Calling backup_engine.import_vm_native...")
         success, msg = backup_engine.import_vm_native(

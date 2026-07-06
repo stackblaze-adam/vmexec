@@ -919,6 +919,10 @@
     max-width: calc(var(--spacing) * 64);
   }
 
+  .max-w-\[16rem\] {
+    max-width: 16rem;
+  }
+
   .max-w-\[17rem\] {
     max-width: 17rem;
   }
@@ -1748,6 +1752,10 @@
     stroke-width: 3.2px;
   }
 
+  .p-0 {
+    padding: 0;
+  }
+
   .p-1\.5 {
     padding: calc(var(--spacing) * 1.5);
   }
@@ -2255,6 +2263,14 @@
 
   .no-underline {
     text-decoration-line: none;
+  }
+
+  .underline {
+    text-decoration-line: underline;
+  }
+
+  .decoration-dotted {
+    text-decoration-style: dotted;
   }
 
   .accent-brand {

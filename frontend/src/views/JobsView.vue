@@ -415,7 +415,18 @@ function isActive(vm) {
 
 const drawerIsRunning = computed(() => detailVm.value && isActive(detailVm.value))
 const drawerProgress = computed(() => (detailVm.value ? liveProgress(detailVm.value) : { progress: 0, speed_mbps: 0 }))
-const drawerTitle = computed(() => (drawerIsRunning.value ? 'Backup in progress' : 'Backup failed'))
+const drawerStatus = computed(() => {
+  if (!detailVm.value) return 'None'
+  return liveProgress(detailVm.value).last_status || detailVm.value.last_status || 'None'
+})
+const drawerTitle = computed(() => {
+  if (drawerIsRunning.value) return 'Backup in progress'
+  const s = drawerStatus.value
+  if (s === 'Failed') return 'Backup failed'
+  if (s === 'Cancelled') return 'Backup cancelled'
+  if (s === 'Success') return 'Last backup succeeded'
+  return 'Backup details'
+})
 
 function rowStatus(vm) {
   const p = liveProgress(vm)

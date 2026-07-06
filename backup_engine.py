@@ -1108,7 +1108,7 @@ def _remove_backup_snapshot(si, vm_name, snap_name, timeout_mins=60):
 # ---------------------------------------------------------------------------
 #  Upload file to ESXi via Datastore HTTP
 # ---------------------------------------------------------------------------
-def _upload_file_http(si, datastore_name, dest_rel_path, storage, source_rel_path, is_cancelled_func=None, progress_callback=None, base_pct=0, max_pct=100):
+def _upload_file_http(si, datastore_name, dest_rel_path, storage, source_rel_path, is_cancelled_func=None, progress_callback=None, base_pct=0, max_pct=100, dc_path="ha-datacenter"):
     """
     Uploads a file to ESXi's HTTP file server from StorageProvider.
     """
@@ -1117,7 +1117,7 @@ def _upload_file_http(si, datastore_name, dest_rel_path, storage, source_rel_pat
 
     encoded_path = '/'.join(url_quote(p, safe='') for p in dest_rel_path.split('/'))
     url = (f"https://{host_ip}/folder/{encoded_path}"
-           f"?dcPath=ha-datacenter&dsName={url_quote(datastore_name, safe='')}")
+           f"?dcPath={url_quote(dc_path, safe='')}&dsName={url_quote(datastore_name, safe='')}")
 
     log_info(f"[UPLOAD] {source_rel_path} to [{datastore_name}] {dest_rel_path}")
 
@@ -1192,11 +1192,28 @@ def import_vm_native(si, storage, source_rel_dir, target_ds, target_name, progre
             return None
             
         log_info(f"[RESTORE] Resolving datacenter...")
-        datacenter = find_obj(content.rootFolder, vim.Datacenter)
+        # Prefer the datacenter that actually owns the target datastore. On
+        # vCenter the datacenter is NOT "ha-datacenter", so hardcoding it makes
+        # the datastore HTTP folder URL 404. Walk each DC's datastores to match.
+        datacenter = None
+        for dc in content.rootFolder.childEntity:
+            if not isinstance(dc, vim.Datacenter):
+                continue
+            try:
+                if any(ds.name == target_ds for ds in dc.datastore):
+                    datacenter = dc
+                    break
+            except Exception:
+                continue
+        if not datacenter:
+            datacenter = find_obj(content.rootFolder, vim.Datacenter)
         if not datacenter:
             log_warn("[RESTORE] Could not find Datacenter via traversal, falling back to index 0.")
             datacenter = content.rootFolder.childEntity[0]
-            
+
+        dc_path = datacenter.name
+        log_info(f"[RESTORE] Using datacenter '{dc_path}' for datastore '{target_ds}'.")
+
         fm = content.fileManager
 
         # 1. Create target directory
@@ -1234,7 +1251,7 @@ def import_vm_native(si, storage, source_rel_dir, target_ds, target_name, progre
             log_info(f"[RESTORE] Uploading {filename} ({idx+1}/{total_files})...")
             if is_cancelled_func and is_cancelled_func():
                 raise Exception("Restore cancelled by user")
-            _upload_file_http(si, target_ds, dest_p, storage, source_p, is_cancelled_func, progress_callback, step_pct_start, step_pct_end)
+            _upload_file_http(si, target_ds, dest_p, storage, source_p, is_cancelled_func, progress_callback, step_pct_start, step_pct_end, dc_path=dc_path)
 
         if progress_callback: progress_callback(95)
 

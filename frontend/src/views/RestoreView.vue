@@ -31,7 +31,14 @@
                   <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: r.progress + '%' }"></div>
                 </div>
                 <span class="text-xs font-mono">{{ r.progress }}%</span>
+                <span v-if="r.current_action" class="block text-[0.7rem] text-muted mt-1 truncate max-w-[16rem]" :title="r.current_action">{{ r.current_action }}</span>
               </div>
+              <button
+                v-else-if="r.status === 'Failed' && r.error_message"
+                type="button"
+                class="text-xs text-red-400 underline decoration-dotted cursor-pointer bg-transparent border-0 p-0"
+                @click="showError(r)"
+              >View error</button>
               <span v-else class="text-xs text-muted">—</span>
             </td>
             <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono text-muted">{{ formatDate(r.start_time) }}</td>
@@ -246,7 +253,7 @@ const pointBadgeStyles = {
   legacy: 'bg-gray-500/15 text-muted',
 }
 
-const { confirm } = useModal()
+const { confirm, alert } = useModal()
 
 const restores = ref([])
 const hosts = ref([])
@@ -291,6 +298,10 @@ function restoreClass(s) {
   if (s === 'Failed') return 'status-error'
   if (s === 'In Progress') return 'status-running'
   return 'status-neutral'
+}
+
+function showError(r) {
+  alert(r.error_message || 'No error details recorded.', { title: `Restore failed — ${r.target_name}` })
 }
 
 function pointTypeLabel(version) {

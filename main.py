@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 import uvicorn
 from urllib.parse import quote
 from fastapi import FastAPI, Depends, Request, Form, status, HTTPException
@@ -25,7 +26,7 @@ app = FastAPI(title="VMExec")
 from api.v1.router import router as v1_router
 v1_app = FastAPI(
     title="VMExec API v1",
-    version="1.1.0",
+    version="1.1.1",
     docs_url="/docs",
     openapi_url="/openapi.json",
 )
@@ -80,6 +81,16 @@ def startup_event():
             log_info(f"[PID {pid}] Clearing stale action '{v.current_action}' for VM {v.vm_name}")
             v.progress = 0
             v.current_action = ""
+
+    # Reconcile stale restores: the restore executor runs in this process, so an
+    # "In Progress" restore cannot survive a restart — mark it Failed instead of
+    # leaving it stuck forever.
+    stale_restores = db.query(RestoreJob).filter(RestoreJob.status == "In Progress").all()
+    for job in stale_restores:
+        log_info(f"[PID {pid}] Marking interrupted restore '{job.target_name}' as Failed")
+        job.status = "Failed"
+        job.error_message = job.error_message or "Restore was interrupted by a service restart."
+        job.end_time = datetime.datetime.utcnow()
     
     # Create default admin and password = admin if no users exist
     if not db.query(User).first():

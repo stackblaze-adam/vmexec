@@ -141,28 +141,79 @@ def _stream_disk_via_nbdcopy(
         raise VddkNotAvailableError("nbdcopy not found in PATH (install libnbd-bin)")
 
     os.makedirs(os.path.dirname(dest_path) or ".", exist_ok=True)
-    run_cmd = cmd_prefix + ["--run", f'{nbdcopy} --no-extents "$uri" "{dest_path}"']
+
+    # nbdkit runs with -v and is extremely chatty (a debug line per read). If
+    # its stderr goes to a pipe that we don't drain while the copy runs, the
+    # ~64 KB OS pipe buffer fills, nbdkit blocks on its next log write, and the
+    # whole transfer freezes — observed as a bogus "stall" at a few tens of MB.
+    # Send stderr to a file so it can never block (same pattern as the extent
+    # reader path). Read the tail only on failure.
+    err_fd, err_path = tempfile.mkstemp(prefix="nbdkit_copy_err_")
+    os.close(err_fd)
+    # nbdcopy --progress=FD periodically writes "N/100" reflecting how far it
+    # has advanced through the SOURCE. Unlike destination allocation (st_blocks),
+    # this keeps moving while nbdcopy streams large all-zero regions (which it
+    # writes back as holes, so st_blocks flatlines). We use it as a second
+    # liveness signal so sparse disks don't trip a false stall, and to drive an
+    # accurate progress bar. FD 3 is redirected to a file inside the --run shell.
+    prog_fd, prog_path = tempfile.mkstemp(prefix="nbdcopy_prog_")
+    os.close(prog_fd)
+    run_cmd = cmd_prefix + [
+        "--run",
+        f'{nbdcopy} --no-extents --progress=3 "$uri" "{dest_path}" 3>"{prog_path}"',
+    ]
     log_info(f"[NBD] Streaming disk → {dest_path}")
     if action_callback:
         action_callback("Streaming disk via NBD…")
-    proc = subprocess.Popen(
-        run_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+
+    def _read_progress_pct():
+        """Last 'N/100' value nbdcopy wrote to the progress file, or None."""
+        try:
+            with open(prog_path, "r", errors="replace") as f:
+                data = f.read()
+        except OSError:
+            return None
+        pct = None
+        for tok in data.split():
+            if tok.endswith("/100"):
+                try:
+                    pct = int(tok.split("/", 1)[0])
+                except ValueError:
+                    pass
+        return pct
+
+    def _err_tail():
+        try:
+            with open(err_path, "r", errors="replace") as f:
+                return f.read()[-2000:].strip()
+        except OSError:
+            return ""
+
+    def _cleanup_tmp():
+        for p in (prog_path, err_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+    errf = open(err_path, "wb")
+    proc = subprocess.Popen(run_cmd, stdout=subprocess.DEVNULL, stderr=errf)
+    errf.close()
     start = time.time()
     last_size = 0
-    last_growth = start
+    last_pct = -1
+    last_advance = start
     last_speed_t = start
 
     def _abort(msg):
-        proc.kill()
-        try:
-            stdout, stderr = proc.communicate(timeout=30)
-        except Exception:
-            stdout, stderr = "", ""
-        err = (stderr or stdout or "").strip()[:2000]
+        if proc.poll() is None:
+            proc.kill()
+            try:
+                proc.wait(timeout=30)
+            except Exception:
+                pass
+        err = _err_tail()
+        _cleanup_tmp()
         raise RuntimeError(f"{msg}. {err}" if err else msg)
 
     try:
@@ -173,17 +224,23 @@ def _stream_disk_via_nbdcopy(
                 _abort(f"nbdcopy timed out after {timeout_secs}s")
             time.sleep(1.5)
             now = time.time()
-            if not os.path.isfile(dest_path):
-                if now - last_growth > stall_secs:
-                    _abort(f"nbdcopy stalled: no output file after {stall_secs}s")
-                continue
-            size = _file_bytes_written(dest_path)
+            size = _file_bytes_written(dest_path) if os.path.isfile(dest_path) else 0
+            pct = _read_progress_pct()
+            # Advance if EITHER the destination grew (non-zero regions) OR the
+            # source read position moved (zero regions). Only a genuine hang
+            # freezes both at once.
+            advanced = False
             if size > last_size:
-                last_growth = now
-            elif now - last_growth > stall_secs:
+                advanced = True
+            if pct is not None and pct > last_pct:
+                last_pct = pct
+                advanced = True
+            if advanced:
+                last_advance = now
+            elif now - last_advance > stall_secs:
                 _abort(
                     f"nbdcopy stalled: no data written for {stall_secs}s"
-                    if size == 0
+                    if size == 0 and last_pct <= 0
                     else f"nbdcopy stalled: no progress for {stall_secs}s at {size // (1024 * 1024)} MB"
                 )
             dt = now - last_speed_t
@@ -191,22 +248,33 @@ def _stream_disk_via_nbdcopy(
                 mbps = (size - last_size) / dt / (1024 * 1024)
                 if mbps > 0:
                     speed_callback(round(mbps, 1))
-                last_size = size
                 last_speed_t = now
-            if capacity_bytes and capacity_bytes > 0 and size > 0 and progress_callback:
-                pct = progress_base + int((size / capacity_bytes) * progress_total)
-                progress_callback(min(pct, progress_base + max(progress_total - 1, 0)))
+            if size > last_size:
+                last_size = size
+            if progress_callback:
+                if pct is not None and pct >= 0:
+                    p = progress_base + int(pct / 100 * progress_total)
+                    progress_callback(min(p, progress_base + max(progress_total - 1, 0)))
+                elif capacity_bytes and capacity_bytes > 0 and size > 0:
+                    p = progress_base + int((size / capacity_bytes) * progress_total)
+                    progress_callback(min(p, progress_base + max(progress_total - 1, 0)))
     finally:
         if proc.poll() is None:
             proc.kill()
-            proc.wait(timeout=30)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        err = (stderr or stdout or "").strip()[:2000]
-        raise RuntimeError(f"nbdcopy failed (exit {proc.returncode}): {err}")
+            try:
+                proc.wait(timeout=30)
+            except Exception:
+                pass
+
+    rc = proc.returncode
+    written = _file_bytes_written(dest_path) if os.path.isfile(dest_path) else 0
+    err = _err_tail()
+    _cleanup_tmp()
+    if rc != 0:
+        raise RuntimeError(f"nbdcopy failed (exit {rc}): {err}")
     if progress_callback:
         progress_callback(min(progress_base + progress_total, 99))
-    return _file_bytes_written(dest_path) if os.path.isfile(dest_path) else 0
+    return written
 
 
 def _resolve_local_dest(storage, dest_rel_path):
@@ -493,11 +561,21 @@ _EXTENT_READER_SRC = (
     "h = nbd.NBD()\n"
     "h.connect_uri('nbd+unix://?socket=' + sock)\n"
     "out = sys.stdout.buffer\n"
+    # libnbd rejects preads larger than 64 MiB (ERANGE). A single CBT changed
+    # region can be far larger, so split every area into <=32 MiB reads (also
+    # gentler on VDDK). Each chunk is framed separately with its own offset.
+    "CHUNK = 32 * 1024 * 1024\n"
     "for start, length in areas:\n"
-    "    data = h.pread(length, start)\n"
-    "    out.write(struct.pack('>Q', start))\n"
-    "    out.write(struct.pack('>Q', len(data)))\n"
-    "    out.write(data)\n"
+    "    off = start\n"
+    "    remaining = length\n"
+    "    while remaining > 0:\n"
+    "        n = CHUNK if remaining > CHUNK else remaining\n"
+    "        data = h.pread(n, off)\n"
+    "        out.write(struct.pack('>Q', off))\n"
+    "        out.write(struct.pack('>Q', len(data)))\n"
+    "        out.write(data)\n"
+    "        off += n\n"
+    "        remaining -= n\n"
     "out.flush()\n"
 )
 
@@ -587,9 +665,14 @@ def read_snapshot_extents(
                 pos += 16
                 extents.append((start, buf[pos:pos + length]))
                 pos += length
-            if len(extents) != len(filtered):
+            # A single requested area may be returned as several <=32 MiB
+            # chunks (see reader), so the frame count won't match the input
+            # count. Validate by total bytes covered instead.
+            got_bytes = sum(len(d) for _, d in extents)
+            want_bytes = sum(length for _, length in filtered)
+            if got_bytes != want_bytes:
                 raise RuntimeError(
-                    f"extent count mismatch: expected {len(filtered)}, got {len(extents)}"
+                    f"extent byte mismatch: expected {want_bytes}, got {got_bytes}"
                 )
             return extents
         except Exception as e:
@@ -629,4 +712,5 @@ def read_snapshot_extent(
         si, vm, snap_obj, disk, [(offset, length)],
         server_host, host_user, host_password, config, connection_type,
     )
-    return areas[0][1] if areas else b""
+    # A read >32 MiB is returned as multiple ordered chunks; concatenate them.
+    return b"".join(d for _, d in areas)

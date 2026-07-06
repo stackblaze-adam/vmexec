@@ -1,17 +1,7 @@
 <template>
   <div>
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold">Backup</h1>
-        <button
-          type="button"
-          :class="paused ? btnSecondary : btnDanger"
-          class="px-3 py-1.5 text-xs font-medium"
-          @click="togglePause(!paused)"
-        >
-          {{ paused ? 'Resume all' : 'Pause all' }}
-        </button>
-      </div>
+      <h1 class="text-2xl font-bold">Backup</h1>
       <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-sm" @click="showInventory = true">Inventory</button>
     </div>
 
@@ -32,14 +22,6 @@
         <option value="error">Failed</option>
         <option value="success">Successful</option>
       </select>
-      <select v-model="copyFilter" class="py-2 px-3 text-sm">
-        <option value="all">2nd Copy: All</option>
-        <option value="ok">2nd Copy: OK</option>
-        <option value="failed">2nd Copy: Failed</option>
-        <option value="skipped">2nd Copy: Skipped</option>
-        <option value="copying">2nd Copy: Copying</option>
-        <option value="none">2nd Copy: N/A</option>
-      </select>
     </div>
 
     <div
@@ -47,10 +29,22 @@
       class="flex flex-wrap items-center gap-3 px-4 py-2.5 mb-3 border border-border rounded-md bg-nav"
     >
       <span class="text-sm font-medium">{{ selectedIds.size }} selected</span>
-      <button type="button" :class="btnPrimary" class="px-3 py-1.5 text-xs font-medium" @click="runSelected">Run selected</button>
-      <button type="button" :class="btnDanger" class="px-3 py-1.5 text-xs font-medium" @click="abortSelected">Abort selected</button>
-      <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium" @click="pauseSelected">Pause selected</button>
-      <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium hover:text-red-500" @click="removeSelected">Remove selected</button>
+      <button type="button" :class="btnPrimary" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium" @click="runSelected">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Run selected
+      </button>
+      <button type="button" :class="btnDanger" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium" @click="abortSelected">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+        Abort selected
+      </button>
+      <button type="button" :class="btnSecondary" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium" @click="pauseSelected">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>
+        Pause selected
+      </button>
+      <button type="button" :class="btnSecondary" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:text-red-500" @click="removeSelected">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Remove selected
+      </button>
       <button type="button" class="text-xs font-medium opacity-60" @click="clearSelection">Clear</button>
     </div>
 
@@ -82,13 +76,6 @@
             >
               Status<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('status') }}</span>
             </th>
-            <th
-              class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
-              :class="{ 'text-brand': sortKey === 'secondarycopy' }"
-              @click="setSort('secondarycopy')"
-            >
-              2nd Copy<span class="inline-block w-3 ml-0.5 opacity-85">{{ sortInd('secondarycopy') }}</span>
-            </th>
             <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Progress</th>
             <th
               class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav cursor-pointer select-none whitespace-nowrap hover:text-main"
@@ -118,41 +105,62 @@
             </td>
             <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono text-brand">{{ vm.host_name || '—' }}</td>
             <td class="px-4 py-3 border-b border-border align-middle">
+              <StatusBadge v-bind="scheduleState(vm)" />
+            </td>
+            <td class="px-4 py-3 border-b border-border align-middle min-w-[140px]">
               <button
-                v-if="isActive(vm) || isFailed(vm)"
+                v-if="isActive(vm) || hasRun(vm)"
                 type="button"
-                class="inline-flex items-center gap-1 cursor-pointer rounded-full transition-shadow"
-                :class="isActive(vm) ? 'hover:ring-2 hover:ring-blue-500/25' : 'hover:ring-2 hover:ring-red-500/25'"
-                :title="isActive(vm) ? 'View backup progress' : 'View failure details'"
+                class="w-full text-left rounded-md cursor-pointer transition-shadow border-0 bg-transparent p-0"
+                :class="isActive(vm) || !isFailed(vm) ? 'hover:ring-2 hover:ring-blue-500/25' : 'hover:ring-2 hover:ring-red-500/25'"
+                title="View backup details"
                 @click="openJobDrawer(vm)"
               >
-                <StatusBadge v-bind="rowStatus(vm)" />
+                <div v-if="isActive(vm)">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="truncate max-w-[120px] text-brand">{{ progressText(vm) }}</span>
+                    <span v-if="!startingUp(vm)" class="font-mono">{{ liveProgress(vm).progress }}%</span>
+                  </div>
+                  <div class="block h-1 mt-1 bg-border rounded-sm overflow-hidden">
+                    <div v-if="startingUp(vm)" class="h-full w-2/5 bg-brand rounded-sm animate-pulse"></div>
+                    <div v-else class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: liveProgress(vm).progress + '%' }"></div>
+                  </div>
+                </div>
+                <StatusBadge v-else v-bind="rowStatus(vm)" />
               </button>
-              <StatusBadge v-else v-bind="rowStatus(vm)" />
-              <span v-if="vm.is_job_active" class="ml-1 text-xs opacity-60">scheduled</span>
-              <span v-else-if="vm.is_selected" class="ml-1 text-xs opacity-60">paused</span>
+              <span v-else class="text-xs text-muted italic">Not backed up</span>
             </td>
-            <td class="px-4 py-3 border-b border-border align-middle"><StatusBadge v-bind="rowCopy(vm)" /></td>
-            <td class="px-4 py-3 border-b border-border align-middle min-w-[140px]">
-              <div v-if="isActive(vm)">
-                <div class="flex justify-between text-xs mb-1">
-                  <span class="truncate max-w-[120px] text-brand">{{ progressText(vm) }}</span>
-                  <span class="font-mono">{{ liveProgress(vm).progress }}%</span>
-                </div>
-                <div class="block h-1 mt-1 bg-border rounded-sm overflow-hidden">
-                  <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: liveProgress(vm).progress + '%' }"></div>
-                </div>
-              </div>
-              <span v-else class="text-xs text-muted">—</span>
+            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono whitespace-nowrap text-muted">
+              <span>{{ formatDate(liveProgress(vm).last_backup_ts ? liveProgress(vm).last_backup_ts : vm.last_backup) }}</span>
+              <span v-if="!isActive(vm) && vm.last_backup && vm.last_backup_duration > 0" class="block text-[0.7rem] opacity-70">took {{ formatDuration(vm.last_backup_duration) }}</span>
             </td>
-            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono whitespace-nowrap text-muted">{{ formatDate(liveProgress(vm).last_backup_ts ? liveProgress(vm).last_backup_ts : vm.last_backup) }}</td>
             <td class="px-4 py-3 border-b border-border align-middle text-xs whitespace-nowrap">{{ scheduleLabel(vm) }}</td>
             <td class="text-right px-4 py-3 border-b border-border align-middle whitespace-nowrap overflow-visible relative">
               <div class="inline-flex gap-1 items-center justify-end">
-                <button v-if="isActive(vm)" type="button" :class="btnDanger" class="px-2 py-1 text-xs" @click="stopJob(vm.id)">Stop</button>
-                <button v-else type="button" :class="btnPrimary" class="px-2 py-1 text-xs" :disabled="!auth.isOperator" @click="runJob(vm.id)">Run</button>
+                <button
+                  v-if="isActive(vm)"
+                  type="button"
+                  :class="btnIconDanger"
+                  title="Stop backup"
+                  :disabled="!auth.isOperator"
+                  @click="stopJob(vm.id)"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  :class="btnIconPrimary"
+                  title="Run backup"
+                  :disabled="!auth.isOperator"
+                  @click="runJob(vm.id)"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                </button>
                 <div class="relative inline-block" data-schedule-menu>
-                  <button type="button" :class="btnSecondary" class="p-1.5 rounded" title="Schedule settings" @click="toggleScheduleMenu(vm.id)">⏱</button>
+                  <button type="button" :class="btnIconSecondary" title="Schedule settings" @click="toggleScheduleMenu(vm.id)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </button>
                   <div
                     v-if="openScheduleId === vm.id"
                     class="absolute right-0 top-[calc(100%+0.35rem)] z-60 min-w-[15.5rem] max-w-[17rem] p-3 rounded-lg border border-border bg-card shadow-[0_10px_28px_rgba(0,0,0,0.16)] text-left"
@@ -161,12 +169,14 @@
                     <JobSchedulePopover :vm="vm" @updated="onVmUpdated" />
                   </div>
                 </div>
-                <button type="button" :class="btnSecondary" class="p-1.5 rounded hover:text-red-500" title="Remove from tasks" @click="removeVm(vm)">🗑</button>
+                <button type="button" :class="btnIconSecondary" class="hover:text-red-500" title="Remove from tasks" @click="removeVm(vm)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
               </div>
             </td>
           </tr>
           <tr v-if="!sorted.length">
-            <td colspan="9" class="py-12 text-center text-muted">
+            <td colspan="8" class="py-12 text-center text-muted">
               <div v-if="!jobs.length" class="text-sm font-medium mb-1">No backup tasks configured</div>
               <div v-if="!jobs.length" class="text-xs opacity-70 mb-3">Select VMs in Inventory, then apply selection.</div>
               <button v-if="!jobs.length" type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-semibold" @click="showInventory = true">Open Inventory</button>
@@ -282,6 +292,10 @@
               <span class="block font-semibold uppercase tracking-wide text-muted mb-1">{{ drawerIsRunning ? 'Started' : 'Last attempt' }}</span>
               <span class="font-mono text-muted">{{ formatDate(detailVm.last_backup) }}</span>
             </div>
+            <div v-if="!drawerIsRunning && detailVm.last_backup_duration > 0">
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Duration</span>
+              <span class="font-mono text-muted">{{ formatDuration(detailVm.last_backup_duration) }}</span>
+            </div>
             <div class="col-span-2">
               <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Schedule</span>
               <span>{{ scheduleLabel(detailVm) }}</span>
@@ -293,13 +307,13 @@
             <div class="rounded-lg border border-blue-500/25 bg-blue-500/8 p-4">
               <div class="flex items-center justify-between gap-2 mb-2">
                 <StatusBadge cls="status-running" label="Running" />
-                <span class="text-lg font-bold font-mono text-brand tabular-nums">{{ drawerProgress.progress }}%</span>
+                <span v-if="!startingUp(detailVm)" class="text-lg font-bold font-mono text-brand tabular-nums">{{ drawerProgress.progress }}%</span>
               </div>
               <div class="h-2 rounded-sm bg-border overflow-hidden mb-2">
-                <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: drawerProgress.progress + '%' }"></div>
+                <div v-if="startingUp(detailVm)" class="h-full w-2/5 bg-brand rounded-sm animate-pulse"></div>
+                <div v-else class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: drawerProgress.progress + '%' }"></div>
               </div>
               <p class="text-sm text-main m-0">{{ progressText(detailVm) }}</p>
-              <p v-if="drawerProgress.speed_mbps > 0" class="text-xs text-muted mt-1.5 mb-0">{{ drawerProgress.speed_mbps }} MB/s</p>
             </div>
           </div>
 
@@ -320,7 +334,7 @@
               >
                 <div class="flex items-center justify-between gap-2 mb-1">
                   <StatusBadge :cls="logClass(log.status)" :label="log.status" class="text-[0.625rem] px-2 py-0.5" />
-                  <span class="font-mono text-muted shrink-0">{{ formatLogTime(log.timestamp) }}</span>
+                  <span class="font-mono text-muted shrink-0" :title="formatDate(log.timestamp)">{{ formatLogTime(log.timestamp) }}</span>
                 </div>
                 <p v-if="log.message" class="text-muted leading-snug m-0">{{ log.message }}</p>
               </div>
@@ -359,7 +373,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { jobsApi, hostsApi, logsApi } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
-import { useJobProgress, isJobActive, statusBadge, copyBadge, formatDate } from '@/composables/useJobProgress'
+import { useJobProgress, isJobActive, statusBadge, formatDate, formatDuration, formatRelativeTime } from '@/composables/useJobProgress'
 import { useModal } from '@/composables/useModal'
 import StatusBadge from '@/components/StatusBadge.vue'
 import JobSchedulePopover from '@/components/JobSchedulePopover.vue'
@@ -370,6 +384,11 @@ const btnSecondary =
   'inline-flex items-center justify-center rounded-md border border-btn-sec-border bg-btn-sec text-btn-sec-text hover:bg-btn-sec-hover transition-colors duration-200'
 const btnDanger =
   'inline-flex items-center justify-center rounded-md border-0 bg-red-600 text-white hover:bg-red-700 transition-colors duration-200'
+const btnIcon =
+  'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200 disabled:opacity-55 disabled:cursor-not-allowed shrink-0'
+const btnIconPrimary = `${btnIcon} border-0 bg-brand text-white hover:bg-brand-hover`
+const btnIconDanger = `${btnIcon} border-0 bg-red-600 text-white hover:bg-red-700`
+const btnIconSecondary = `${btnIcon} border border-btn-sec-border bg-btn-sec text-btn-sec-text hover:bg-btn-sec-hover`
 
 const auth = useAuthStore()
 const { confirm, alert } = useModal()
@@ -379,7 +398,6 @@ const progressMap = ref({})
 const paused = ref(false)
 const search = ref('')
 const stateFilter = ref('all')
-const copyFilter = ref('all')
 const showInventory = ref(false)
 const scanHostId = ref(null)
 const pendingSelection = ref({})
@@ -413,6 +431,15 @@ function isActive(vm) {
   return isJobActive(liveProgress(vm))
 }
 
+// Active but no measurable progress yet (queued / preflight / snapshot / connecting).
+// Show an indeterminate "working" bar instead of a dead 0% bar so the row never
+// looks idle while a job is genuinely running.
+function startingUp(vm) {
+  if (!vm) return false
+  const p = liveProgress(vm)
+  return isActive(vm) && !((p.progress || 0) > 0)
+}
+
 const drawerIsRunning = computed(() => detailVm.value && isActive(detailVm.value))
 const drawerProgress = computed(() => (detailVm.value ? liveProgress(detailVm.value) : { progress: 0, speed_mbps: 0 }))
 const drawerStatus = computed(() => {
@@ -432,6 +459,16 @@ function rowStatus(vm) {
   const p = liveProgress(vm)
   const b = statusBadge(p.last_status || vm.last_status, isActive(vm))
   return { cls: b.cls, label: b.label }
+}
+
+function scheduleState(vm) {
+  if (vm.is_job_active) return { cls: 'status-running', label: 'Scheduled' }
+  return { cls: 'status-cancelled', label: 'Paused' }
+}
+
+function hasRun(vm) {
+  const s = liveProgress(vm).last_status || vm.last_status
+  return !!s && s !== 'Never' && s !== 'None'
 }
 
 function isFailed(vm) {
@@ -484,23 +521,15 @@ function logClass(status) {
 }
 
 function formatLogTime(ts) {
-  if (!ts) return '—'
-  try {
-    return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return ts
-  }
-}
-
-function rowCopy(vm) {
-  const p = liveProgress(vm)
-  const b = copyBadge(p.secondary_copy_status || vm.last_secondary_copy_status)
-  return { cls: b.cls, label: b.label }
+  return formatRelativeTime(ts)
 }
 
 function progressText(vm) {
   const p = liveProgress(vm)
   const action = p.current_action || 'Processing…'
+  if (action.startsWith('PENDING_STOP')) return 'Stopping…'
+  if (action.startsWith('PENDING_RUN')) return 'Starting…'
+  if (action.startsWith('Queued')) return 'Queued…'
   if (action.startsWith('Backing up...') && (p.speed_mbps || 0) <= 0) {
     return 'Streaming disk via NBD…'
   }
@@ -517,23 +546,7 @@ function scheduleLabel(vm) {
 }
 
 function statusSort(vm) {
-  if (isActive(vm)) return '0-running'
-  const s = vm.last_status || 'None'
-  if (s === 'Failed') return '1-failed'
-  if (s === 'Cancelled') return '2-cancelled'
-  if (s === 'Success') return '3-success'
-  if (s === 'Skipped') return '4-skipped'
-  return '5-idle'
-}
-
-function copySort(vm) {
-  const sc = (liveProgress(vm).secondary_copy_status || vm.last_secondary_copy_status || 'none').toLowerCase()
-  if (sc === 'copying') return '0-copying'
-  if (sc === 'failed') return '1-failed'
-  if (sc === 'none') return '2-none'
-  if (sc === 'skipped') return '3-skipped'
-  if (sc === 'ok') return '4-ok'
-  return '2-none'
+  return vm.is_job_active ? '0-scheduled' : '1-paused'
 }
 
 const filtered = computed(() => {
@@ -542,13 +555,11 @@ const filtered = computed(() => {
     if (!vm.vm_name.toLowerCase().includes(q)) return false
     const p = liveProgress(vm)
     const active = isActive(vm)
-    const copy = (p.secondary_copy_status || vm.last_secondary_copy_status || 'none').toLowerCase()
     const status = p.last_status || vm.last_status
     if (stateFilter.value === 'active' && !active) return false
     if (stateFilter.value === 'scheduled' && !vm.is_job_active) return false
     if (stateFilter.value === 'error' && status !== 'Failed') return false
     if (stateFilter.value === 'success' && status !== 'Success') return false
-    if (copyFilter.value !== 'all' && copy !== copyFilter.value) return false
     return true
   })
 })
@@ -567,8 +578,6 @@ const sorted = computed(() => {
       bv = b.last_backup ? new Date(b.last_backup).getTime() : 0
     } else if (sortKey.value === 'status') {
       av = statusSort(a); bv = statusSort(b)
-    } else if (sortKey.value === 'secondarycopy') {
-      av = copySort(a); bv = copySort(b)
     } else if (sortKey.value === 'schedule') {
       av = (a.schedule_hour || 0) * 60 + (a.schedule_minute || 0)
       bv = (b.schedule_hour || 0) * 60 + (b.schedule_minute || 0)

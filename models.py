@@ -145,6 +145,7 @@ class VM(Base):
     schedule_frequency = Column(String, default="daily")  # daily | weekly | monthly
     schedule_days = Column(String, default="0,1,2,3,4,5,6")  # APScheduler day_of_week: 0=Mon … 6=Sun
     last_backup = Column(DateTime, nullable=True)
+    last_backup_duration = Column(Integer, default=0)  # Seconds taken by the last completed backup
     last_status = Column(String, default="Never")
     last_secondary_copy_status = Column(String, default="none")  # none | ok | failed | skipped | copying
     progress = Column(Integer, default=0)
@@ -254,6 +255,7 @@ def init_db():
             ("secondary_s3_bucket", "ALTER TABLE config ADD COLUMN secondary_s3_bucket VARCHAR DEFAULT ''"),
             ("secondary_s3_region", "ALTER TABLE config ADD COLUMN secondary_s3_region VARCHAR DEFAULT 'us-east-1'"),
             ("last_secondary_copy_status", "ALTER TABLE vms ADD COLUMN last_secondary_copy_status VARCHAR DEFAULT 'none'"),
+            ("last_backup_duration", "ALTER TABLE vms ADD COLUMN last_backup_duration INTEGER DEFAULT 0"),
         ]
         
         from logger_util import log_info, log_warn

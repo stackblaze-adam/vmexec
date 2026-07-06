@@ -462,10 +462,12 @@ def perform_backup(vm_id: int):
         def speed_cb(mbps):
             if is_backup_cancelled(vm_id):
                 raise BackupCancelled("Backup cancelled by user")
+            # Keep speed out of the action text; the UI renders speed_mbps
+            # separately. Embedding it here caused the value to render 2-3x.
             try:
                 vm.speed_mbps = mbps
                 if mbps > 0:
-                    vm.current_action = f"Backing up... {mbps:.1f} MB/s"
+                    vm.current_action = "Backing up..."
                     db.commit()
             except Exception:
                 pass
@@ -558,6 +560,7 @@ def perform_backup(vm_id: int):
         backup_end_time = datetime.datetime.now()
         duration_s = int((backup_end_time - backup_start_time).total_seconds())
         duration_str = f"{duration_s // 60}m {duration_s % 60}s"
+        vm.last_backup_duration = duration_s
         # Build destination path string for email
         try:
             dest_path_info = storage.get_base_path().rstrip('/\\') + '/' + dest_rel_dir

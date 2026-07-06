@@ -310,6 +310,11 @@ def stream_snapshot_disk_nfc(
             raise RuntimeError(
                 f"No ExportSnapshot device URL for {os.path.basename(disk['rel_path'])}"
             )
+        # ExportSnapshot leases frequently report fileSize=0 and send no
+        # Content-Length, which leaves progress stuck at 0%. Fall back to the
+        # disk's known capacity so the percentage can advance.
+        if not file_size:
+            file_size = int(disk.get("capacity_bytes", 0) or 0)
         log_info(
             f"[NFC] Streaming snapshot disk {os.path.basename(disk['rel_path'])} "
             f"→ {dest_rel_path}"
@@ -416,6 +421,10 @@ def export_live_nfc(
             step_base = 5 + (85 * disk_idx // max(n_devices, 1))
             step_end = 5 + (85 * (disk_idx + 1) // max(n_devices, 1))
             file_size = getattr(device, "fileSize", 0) or 0
+            # Fall back to known capacity when the lease reports fileSize=0,
+            # otherwise progress can't advance for this disk.
+            if not file_size and disk_idx < len(disk_descriptors):
+                file_size = int(disk_descriptors[disk_idx].get("capacity_bytes", 0) or 0)
 
             nbytes = _stream_url_to_storage(
                 url, storage, flat_rel, cookies,

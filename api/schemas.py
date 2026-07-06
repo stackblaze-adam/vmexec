@@ -256,6 +256,7 @@ class VmResponse(BaseModel):
     schedule_frequency: str
     schedule_days: str
     last_backup: Optional[str]
+    last_backup_duration: int = 0
     last_status: str
     progress: int
     current_action: str
@@ -346,6 +347,7 @@ class RestoreResponse(BaseModel):
     is_cancelled: bool
     start_time: Optional[str]
     end_time: Optional[str]
+    duration_seconds: Optional[int] = None
     error_message: Optional[str]
 
 

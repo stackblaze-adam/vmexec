@@ -14,7 +14,6 @@
           <tr>
             <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Target VM</th>
             <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Host</th>
-            <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Status</th>
             <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Progress</th>
             <th class="text-left text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Started</th>
             <th class="text-right text-[0.7rem] font-semibold uppercase tracking-wide text-muted px-4 py-3 border-b border-border bg-nav">Actions</th>
@@ -24,31 +23,51 @@
           <tr v-for="r in restores" :key="r.id">
             <td class="px-4 py-3 border-b border-border align-middle font-semibold">{{ r.target_name }}</td>
             <td class="px-4 py-3 border-b border-border align-middle text-xs">{{ r.target_esxi_host }}</td>
-            <td class="px-4 py-3 border-b border-border align-middle"><StatusBadge :cls="restoreClass(r.status)" :label="r.status" /></td>
-            <td class="px-4 py-3 border-b border-border align-middle">
-              <div v-if="r.status === 'In Progress'">
-                <div class="block h-1.5 bg-border rounded-sm overflow-hidden">
-                  <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: r.progress + '%' }"></div>
-                </div>
-                <span class="text-xs font-mono">{{ r.progress }}%</span>
-                <span v-if="r.current_action" class="block text-[0.7rem] text-muted mt-1 truncate max-w-[16rem]" :title="r.current_action">{{ r.current_action }}</span>
-              </div>
+            <td class="px-4 py-3 border-b border-border align-middle min-w-[140px]">
               <button
-                v-else-if="r.status === 'Failed' && r.error_message"
+                v-if="r.status === 'In Progress' || r.status === 'Success' || r.status === 'Failed'"
                 type="button"
-                class="text-xs text-red-400 underline decoration-dotted cursor-pointer bg-transparent border-0 p-0"
-                @click="showError(r)"
-              >View error</button>
+                class="w-full text-left rounded-md cursor-pointer transition-shadow border-0 bg-transparent p-0"
+                :class="r.status === 'Failed' ? 'hover:ring-2 hover:ring-red-500/25' : 'hover:ring-2 hover:ring-blue-500/25'"
+                title="View restore details"
+                @click="openRestoreDrawer(r)"
+              >
+                <div v-if="r.status === 'In Progress'">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="truncate max-w-[120px] text-brand">{{ r.current_action || 'Restoring…' }}</span>
+                    <span class="font-mono">{{ r.progress }}%</span>
+                  </div>
+                  <div class="block h-1 mt-1 bg-border rounded-sm overflow-hidden">
+                    <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: r.progress + '%' }"></div>
+                  </div>
+                </div>
+                <StatusBadge v-else v-bind="restoreProgress(r)" />
+              </button>
               <span v-else class="text-xs text-muted">—</span>
             </td>
-            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono text-muted">{{ formatDate(r.start_time) }}</td>
+            <td class="px-4 py-3 border-b border-border align-middle text-xs font-mono text-muted">
+              <span>{{ formatDate(r.start_time) }}</span>
+              <span v-if="r.duration_seconds != null" class="block text-[0.7rem] opacity-70">took {{ formatDuration(r.duration_seconds) }}</span>
+            </td>
             <td class="text-right px-4 py-3 border-b border-border align-middle">
-              <button v-if="r.status === 'In Progress'" type="button" :class="btnDanger" class="px-2 py-1 text-xs mr-1" @click="stop(r.id)">Stop</button>
-              <button type="button" :class="btnSecondary" class="px-2 py-1 text-xs" @click="remove(r.id)">Remove</button>
+              <div class="inline-flex gap-1 items-center justify-end">
+                <button
+                  v-if="r.status === 'In Progress'"
+                  type="button"
+                  :class="btnIconDanger"
+                  title="Stop restore"
+                  @click="stop(r.id)"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+                </button>
+                <button type="button" :class="btnIconSecondary" class="hover:text-red-500" title="Remove from list" @click="remove(r.id)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
             </td>
           </tr>
           <tr v-if="!restores.length">
-            <td colspan="6" class="py-12 text-center text-muted">
+            <td colspan="5" class="py-12 text-center text-muted">
               <div class="text-sm font-medium mb-1">No active or recent restores</div>
               <div class="text-xs opacity-70 mb-3">Open Deploy restore to launch a VM from backup.</div>
               <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-semibold" @click="openDeploy">Deploy restore</button>
@@ -229,13 +248,97 @@
         </div>
       </aside>
     </div>
+
+    <!-- Restore job details drawer -->
+    <div v-if="detailRestore" class="fixed inset-0 z-80">
+      <div class="absolute inset-0 bg-black/45 backdrop-blur-[1px]" @click="closeRestoreDrawer"></div>
+      <aside
+        class="absolute top-0 right-0 bottom-0 w-full max-w-md flex flex-col bg-card border-l border-border shadow-[-4px_0_24px_rgba(0,0,0,0.18)]"
+        role="dialog"
+        aria-labelledby="restore-detail-title"
+      >
+        <div class="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-border bg-nav shrink-0">
+          <div class="min-w-0">
+            <h3 id="restore-detail-title" class="text-base font-semibold leading-tight m-0 truncate">{{ restoreDrawerTitle }}</h3>
+            <p class="text-sm font-mono text-brand mt-0.5 truncate">{{ detailRestore.target_name }}</p>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 p-1.5 rounded-md text-muted border border-border bg-transparent cursor-pointer hover:text-main hover:bg-card"
+            aria-label="Close"
+            @click="closeRestoreDrawer"
+          >
+            <svg class="w-4 h-4 block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Host</span>
+              <span class="font-mono text-brand">{{ detailRestore.target_esxi_host || '—' }}</span>
+            </div>
+            <div>
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Datastore</span>
+              <span class="font-mono text-muted">{{ detailRestore.datastore || '—' }}</span>
+            </div>
+            <div>
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Started</span>
+              <span class="font-mono text-muted">{{ formatDate(detailRestore.start_time) }}</span>
+            </div>
+            <div v-if="detailRestore.end_time">
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Finished</span>
+              <span class="font-mono text-muted">{{ formatDate(detailRestore.end_time) }}</span>
+            </div>
+            <div v-if="detailRestore.duration_seconds != null">
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Duration</span>
+              <span class="font-mono text-muted">{{ formatDuration(detailRestore.duration_seconds) }}</span>
+            </div>
+            <div class="col-span-2">
+              <span class="block font-semibold uppercase tracking-wide text-muted mb-1">Source backup</span>
+              <span class="font-mono text-muted break-all">{{ detailRestore.source_path || '—' }}</span>
+            </div>
+          </div>
+
+          <div v-if="detailRestore.status === 'In Progress'">
+            <span class="block text-xs font-semibold uppercase tracking-wide text-muted mb-2">Progress</span>
+            <div class="rounded-lg border border-blue-500/25 bg-blue-500/8 p-4">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <StatusBadge cls="status-running" label="Running" />
+                <span class="text-lg font-bold font-mono text-brand tabular-nums">{{ detailRestore.progress }}%</span>
+              </div>
+              <div class="h-2 rounded-sm bg-border overflow-hidden mb-2">
+                <div class="h-full bg-brand rounded-sm transition-[width] duration-500 ease-in-out" :style="{ width: detailRestore.progress + '%' }"></div>
+              </div>
+              <p class="text-sm text-main m-0">{{ detailRestore.current_action || 'Restoring…' }}</p>
+            </div>
+          </div>
+
+          <div v-else-if="detailRestore.status === 'Failed'">
+            <span class="block text-xs font-semibold uppercase tracking-wide text-muted mb-2">Error</span>
+            <pre class="text-xs leading-relaxed whitespace-pre-wrap break-words font-mono p-3 rounded-lg border border-red-500/25 bg-red-500/8 text-red-400 m-0">{{ detailRestore.error_message || 'No error message recorded.' }}</pre>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3.5 border-t border-border bg-nav shrink-0">
+          <button type="button" :class="btnSecondary" class="px-3 py-1.5 text-xs font-medium" @click="closeRestoreDrawer">Close</button>
+          <button
+            v-if="detailRestore.status === 'In Progress'"
+            type="button"
+            :class="btnDanger"
+            class="px-3 py-1.5 text-xs font-semibold"
+            @click="stopFromDrawer"
+          >Stop restore</button>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { restoreApi, hostsApi } from '@/api/client'
-import { formatDate } from '@/composables/useJobProgress'
+import { formatDate, formatDuration, statusBadge } from '@/composables/useJobProgress'
 import { useModal } from '@/composables/useModal'
 import StatusBadge from '@/components/StatusBadge.vue'
 
@@ -245,6 +348,10 @@ const btnSecondary =
   'inline-flex items-center justify-center rounded-md border border-btn-sec-border bg-btn-sec text-btn-sec-text hover:bg-btn-sec-hover transition-colors duration-200'
 const btnDanger =
   'inline-flex items-center justify-center rounded-md border-0 bg-red-600 text-white hover:bg-red-700 transition-colors duration-200'
+const btnIcon =
+  'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors duration-200 disabled:opacity-55 disabled:cursor-not-allowed shrink-0'
+const btnIconDanger = `${btnIcon} border-0 bg-red-600 text-white hover:bg-red-700`
+const btnIconSecondary = `${btnIcon} border border-btn-sec-border bg-btn-sec text-btn-sec-text hover:bg-btn-sec-hover`
 
 const pointBadgeStyles = {
   full: 'bg-blue-500/15 text-blue-400',
@@ -253,9 +360,10 @@ const pointBadgeStyles = {
   legacy: 'bg-gray-500/15 text-muted',
 }
 
-const { confirm, alert } = useModal()
+const { confirm } = useModal()
 
 const restores = ref([])
+const detailRestore = ref(null)
 const hosts = ref([])
 const groupedBackups = ref([])
 const datastores = ref([])
@@ -282,6 +390,14 @@ const drawerSubtitle = computed(() => {
   return 'Select backup, target host, and deploy'
 })
 
+const restoreDrawerTitle = computed(() => {
+  if (!detailRestore.value) return 'Restore details'
+  if (detailRestore.value.status === 'In Progress') return 'Restore in progress'
+  if (detailRestore.value.status === 'Failed') return 'Restore failed'
+  if (detailRestore.value.status === 'Success') return 'Restore succeeded'
+  return 'Restore details'
+})
+
 const selectionLabel = computed(() => {
   if (!selectedVersion.value) return 'No backup selected'
   const v = selectedVersion.value
@@ -293,15 +409,23 @@ const canDeploy = computed(() =>
   Boolean(selectedVersion.value?.path && form.value.target_esxi_id && form.value.datastore && form.value.target_name.trim())
 )
 
-function restoreClass(s) {
-  if (s === 'Success') return 'status-success'
-  if (s === 'Failed') return 'status-error'
-  if (s === 'In Progress') return 'status-running'
-  return 'status-neutral'
+function restoreProgress(r) {
+  const b = statusBadge(r.status, r.status === 'In Progress')
+  return { cls: b.cls, label: b.label }
 }
 
-function showError(r) {
-  alert(r.error_message || 'No error details recorded.', { title: `Restore failed — ${r.target_name}` })
+function openRestoreDrawer(r) {
+  detailRestore.value = r
+}
+
+function closeRestoreDrawer() {
+  detailRestore.value = null
+}
+
+async function stopFromDrawer() {
+  if (!detailRestore.value) return
+  await stop(detailRestore.value.id)
+  closeRestoreDrawer()
 }
 
 function pointTypeLabel(version) {
@@ -402,6 +526,10 @@ async function loadChain(vmName) {
 async function load() {
   const [r, h] = await Promise.all([restoreApi.list(), hostsApi.list()])
   restores.value = r
+  if (detailRestore.value) {
+    const updated = r.find((job) => job.id === detailRestore.value.id)
+    detailRestore.value = updated || null
+  }
   hosts.value = h
   if (h.length && !form.value.target_esxi_id) {
     form.value.target_esxi_id = h[0].id

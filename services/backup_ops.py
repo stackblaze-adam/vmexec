@@ -382,6 +382,7 @@ def vm_to_dict(vm, last_backup_message=None):
         "schedule_frequency": vm.schedule_frequency,
         "schedule_days": vm.schedule_days,
         "last_backup": vm.last_backup.isoformat() if vm.last_backup else None,
+        "last_backup_duration": getattr(vm, "last_backup_duration", 0) or 0,
         "last_status": vm.last_status,
         "progress": vm.progress,
         "current_action": vm.current_action,
@@ -597,6 +598,9 @@ def get_system_logs(service_lines=100, service_search="", worker_lines=100, work
 
 
 def restore_to_dict(job):
+    duration_seconds = None
+    if job.start_time and job.end_time:
+        duration_seconds = int((job.end_time - job.start_time).total_seconds())
     return {
         "id": job.id,
         "target_name": job.target_name,
@@ -609,6 +613,7 @@ def restore_to_dict(job):
         "is_cancelled": job.is_cancelled,
         "start_time": job.start_time.isoformat() if job.start_time else None,
         "end_time": job.end_time.isoformat() if job.end_time else None,
+        "duration_seconds": duration_seconds,
         "error_message": job.error_message,
     }
 
@@ -712,7 +717,7 @@ def _vm_is_running(vm):
     for prefix in (
         "Queued",
         "Preflight checks",
-        "CBT backup",
+        "CBT",
         "Backing up VM",
         "Fallback:",
         "Creating backup snapshot",
